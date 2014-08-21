@@ -36,6 +36,9 @@ struct sockaddr;
 /* STUN magic cookie */
 #define STUN_MAGIC_COOKIE 0x2112A442ul
 
+/* STUN XOR fingerprint */
+#define STUN_XOR_FINGERPRINT 0x5354554euL
+
 /* Retrieve the STUN method from the message-type field of the STUN message */
 #define STUN_GET_METHOD(msg_type) ((msg_type) & 0xFEEF)
 
@@ -180,7 +183,7 @@ struct stun_msg {
 
 /* Used for empty STUN attributes */
 struct stun_attr_empty {
-  stun_attr_hdr hdr;
+  struct stun_attr_hdr hdr;
 };
 
 /* STUN address families */
@@ -191,7 +194,7 @@ enum stun_addr_family {
 
 /* Used for representing address attributes */
 struct stun_attr_sockaddr {
-  stun_attr_hdr hdr;
+  struct stun_attr_hdr hdr;
   uint8_t padding;
   uint8_t family;
   uint16_t port;
@@ -203,37 +206,37 @@ struct stun_attr_sockaddr {
 
 /* Used for representing string-like attributes */
 struct stun_attr_string {
-  stun_attr_hdr hdr;
+  struct stun_attr_hdr hdr;
   char value[STUN_MAX_STR_SIZE];
 };
 
 /* Used for representing binary attributes */
-struct stun_attr_string {
-  stun_attr_hdr hdr;
+struct stun_attr_binary {
+  struct stun_attr_hdr hdr;
   uint8_t value[STUN_MAX_BIN_SIZE];
 };
 
 /* Used for 32-bits attribute */
 struct stun_attr_uint32 {
-  stun_attr_hdr hdr;
+  struct stun_attr_hdr hdr;
   uint32_t value;
 };
 
 /* Used for 64-bits attribute */
 struct stun_attr_uint64 {
-  stun_attr_hdr hdr;
+  struct stun_attr_hdr hdr;
   uint64_t value;
 };
 
 /* Used for MESSAGE-INTEGRITY attribute */
 struct stun_attr_msgint {
-  stun_attr_hdr hdr;
+  struct stun_attr_hdr hdr;
   uint8_t hmac[20];
 };
 
 /* Used for the ERROR-CODE attribute */
 struct stun_attr_errcode {
-  stun_attr_hdr hdr;
+  struct stun_attr_hdr hdr;
   uint16_t padding;
   uint8_t err_class;
   uint8_t err_code;
@@ -242,19 +245,19 @@ struct stun_attr_errcode {
 
 /* Used for the UNKNOWN-ATTRIBUTES attribute */
 struct stun_attr_unknown {
-  stun_attr_hdr hdr;
+  struct stun_attr_hdr hdr;
   uint16_t attrs[STUN_MAX_ATTRS];
 };
 
 /* The returned values from the below functions */
 enum stun_status_type {
-  STUN_OK                   = 0,
-  STUN_ERR_NOT_SUPPORTED    = -1,
-  STUN_ERR_NO_MEMORY        = -2,
-  STUN_ERR_INVALID_ARG      = -3,
-  STUN_ERR_UKNOWN_ATTRIBUTE = -4,
-  STUN_ERR_TOO_SMALL        = -5,
-  STUN_ERR_BAD_TYPE         = -6,
+  STUN_OK                    = 0,
+  STUN_ERR_NOT_SUPPORTED     = -1,
+  STUN_ERR_NO_MEMORY         = -2,
+  STUN_ERR_INVALID_ARG       = -3,
+  STUN_ERR_UNKNOWN_ATTRIBUTE = -4,
+  STUN_ERR_TOO_SMALL         = -5,
+  STUN_ERR_BAD_TYPE          = -6,
 };
 
 /* Get STUN standard reason phrase for the specified error code. NULL is
@@ -271,8 +274,8 @@ void stun_msg_init(struct stun_msg *msg, uint16_t type,
 void stun_attr_empty_init(struct stun_attr_empty *attr, uint16_t type);
 
 /* Initializes a sockaddr attribute */
-void stun_attr_sockaddr_init(struct stun_attr_sockaddr *attr, uint16_t type,
-                             const struct sockaddr *addr);
+int stun_attr_sockaddr_init(struct stun_attr_sockaddr *attr, uint16_t type,
+                            const struct sockaddr *addr);
 
 /* Initializes a string-like attribute. Returns non-zero for errors. */
 int stun_attr_string_init(struct stun_attr_string *attr, uint16_t type,
@@ -287,7 +290,7 @@ void stun_attr_uint32_init(struct stun_attr_uint32 *attr, uint16_t type,
                            uint32_t value);
 
 /* Initializes a 64-bit attribute */
-void stun_attr_uint64_init(struct stun_attr_uint32 *attr, uint16_t type,
+void stun_attr_uint64_init(struct stun_attr_uint64 *attr, uint16_t type,
                            uint64_t value);
 
 /* Initializes an ERROR-CODE attribute */
@@ -324,6 +327,7 @@ int stun_msg_add_attr(struct stun_msg *msg, struct stun_attr_hdr *attr);
  * Returns a negative value in case of errors, or STUN_OK if succeeded.
  */
 int stun_msg_encode(const struct stun_msg *msg, void *buffer,
+                    const uint8_t *key, int key_len,
                     size_t bufferlen);
 
 /* Decodes the STUN message from the packet buffer. This function will change

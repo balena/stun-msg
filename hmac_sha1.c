@@ -5,6 +5,7 @@
 
 #include "hmac_sha1.h"
 #include "sha1.h"
+#include <memory.h>
 
 /* 
  * Encode a string using HMAC - see RFC-2104 for details.

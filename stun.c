@@ -15,6 +15,8 @@
 /* Include these for sockaddr_in and sockaddr_in6 */
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 #include <ws2tcpip.h>
 #else
@@ -23,6 +25,8 @@
 #include <netinet/in.h>
 #endif
 
+
+#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
 static uint8_t *store_uint16(uint8_t *p, uint16_t value) {
   *(uint16_t*)p = htons(value);
@@ -59,7 +63,7 @@ static uint8_t *read_uint64(uint8_t *p, uint64_t *value) {
 }
 
 static uint8_t *store_padding(uint8_t *p, size_t n, char pad) {
-  if (n & 0x03 > 0) {
+  if ((n & 0x03) > 0) {
     uint8_t pad[3] = {0};
     memcpy(p, pad, 4-(n & 0x03));
     p += 4 - (n & 0x03);
@@ -71,50 +75,51 @@ static struct {
   int err_code;
   const char *err_msg;
 } err_msg_map[] = {
-  { PJ_STUN_ERROR_TRY_ALTERNATE,		    "Try Alternate"}, 
-  { PJ_STUN_ERROR_BAD_REQUEST,		        "Bad Request"},
-  { PJ_STUN_ERROR_UNAUTHORIZED,		        "Unauthorized"},
-  { PJ_STUN_ERROR_FORBIDDEN,		        "Forbidden"},
-  { PJ_STUN_ERROR_UNKNOWN_ATTRIBUTE,	    "Unknown Attribute"},
-  { PJ_STUN_ERROR_ALLOCATION_MISMATCH,	    "Allocation Mismatch"},
-  { PJ_STUN_ERROR_STALE_NONCE,		        "Stale Nonce"},
-  { PJ_STUN_ERROR_TRANSITIONING,		    "Active Destination Already Set"},
-  { PJ_STUN_ERROR_WRONG_CREDENTIALS,	    "Wrong Credentials"},
-  { PJ_STUN_ERROR_UNSUPP_TRANSPORT_PROTO,   "Unsupported Transport Protocol"},
-  { PJ_STUN_ERROR_OPER_TCP_ONLY,		    "Operation for TCP Only"},
-  { PJ_STUN_ERROR_CONNECTION_FAILURE,	    "Connection Failure"},
-  { PJ_STUN_ERROR_CONNECTION_TIMEOUT,	    "Connection Timeout"},
-  { PJ_STUN_ERROR_ALLOCATION_QUOTA_REACHED, "Allocation Quota Reached"},
-  { PJ_STUN_ERROR_ROLE_CONFLICT,		    "Role Conflict"},
-  { PJ_STUN_ERROR_SERVER_ERROR,		        "Server Error"},
-  { PJ_STUN_ERROR_INSUFFICIENT_CAPACITY,	"Insufficient Capacity"},
-  { PJ_STUN_ERROR_GLOBAL_FAILURE,	        "Global Failure"},
+  { STUN_ERROR_TRY_ALTERNATE,		         "Try Alternate"}, 
+  { STUN_ERROR_BAD_REQUEST,		           "Bad Request"},
+  { STUN_ERROR_UNAUTHORIZED,		         "Unauthorized"},
+  { STUN_ERROR_FORBIDDEN,		             "Forbidden"},
+  { STUN_ERROR_UNKNOWN_ATTRIBUTE,	       "Unknown Attribute"},
+  { STUN_ERROR_ALLOCATION_MISMATCH,	     "Allocation Mismatch"},
+  { STUN_ERROR_STALE_NONCE,		           "Stale Nonce"},
+  { STUN_ERROR_TRANSITIONING,		         "Active Destination Already Set"},
+  { STUN_ERROR_WRONG_CREDENTIALS,	       "Wrong Credentials"},
+  { STUN_ERROR_UNSUPP_TRANSPORT_PROTO,   "Unsupported Transport Protocol"},
+  { STUN_ERROR_OPER_TCP_ONLY,		         "Operation for TCP Only"},
+  { STUN_ERROR_CONNECTION_FAILURE,	     "Connection Failure"},
+  { STUN_ERROR_CONNECTION_TIMEOUT,	     "Connection Timeout"},
+  { STUN_ERROR_ALLOCATION_QUOTA_REACHED, "Allocation Quota Reached"},
+  { STUN_ERROR_ROLE_CONFLICT,		         "Role Conflict"},
+  { STUN_ERROR_SERVER_ERROR,		         "Server Error"},
+  { STUN_ERROR_INSUFFICIENT_CAPACITY,	   "Insufficient Capacity"},
+  { STUN_ERROR_GLOBAL_FAILURE,	         "Global Failure"},
 };
 
-static uint8_t *attr_empty_encode(struct stun_attr_hdr *hdr, uint8_t *p,
-                                  struct stun_msg *msg);
-static uint8_t *attr_sockaddr_encode(struct stun_attr_hdr *hdr, uint8_t *p,
-                                     struct stun_msg *msg);
-static uint8_t *attr_sockaddr_xor_encode(struct stun_attr_hdr *hdr, uint8_t *p,
-                                         struct stun_msg *msg);
-static uint8_t *attr_string_encode(struct stun_attr_hdr *hdr, uint8_t *p,
-                                   struct stun_msg *msg);
-static uint8_t *attr_binary_encode(struct stun_attr_hdr *hdr, uint8_t *p,
-                                   struct stun_msg *msg);
-static uint8_t *attr_uint32_encode(struct stun_attr_hdr *hdr, uint8_t *p,
-                                   struct stun_msg *msg);
-static uint8_t *attr_uint64_encode(struct stun_attr_hdr *hdr, uint8_t *p,
-                                   struct stun_msg *msg);
-static uint8_t *attr_errcode_encode(struct stun_attr_hdr *hdr, uint8_t *p,
-                                    struct stun_msg *msg);
-static uint8_t *attr_unknown_encode(struct stun_attr_hdr *hdr, uint8_t *p,
-                                    struct stun_msg *msg);
-static uint8_t *attr_msgint_encode(struct stun_attr_hdr *hdr, uint8_t *p,
-                                   struct stun_msg *msg);
+static uint8_t *attr_empty_encode(const struct stun_attr_hdr *hdr, uint8_t *p,
+                                  const struct stun_msg *msg);
+static uint8_t *attr_sockaddr_encode(const struct stun_attr_hdr *hdr, uint8_t *p,
+                                     const struct stun_msg *msg);
+static uint8_t *attr_sockaddr_xor_encode(const struct stun_attr_hdr *hdr, uint8_t *p,
+                                         const struct stun_msg *msg);
+static uint8_t *attr_string_encode(const struct stun_attr_hdr *hdr, uint8_t *p,
+                                   const struct stun_msg *msg);
+static uint8_t *attr_binary_encode(const struct stun_attr_hdr *hdr, uint8_t *p,
+                                   const struct stun_msg *msg);
+static uint8_t *attr_uint32_encode(const struct stun_attr_hdr *hdr, uint8_t *p,
+                                   const struct stun_msg *msg);
+static uint8_t *attr_uint64_encode(const struct stun_attr_hdr *hdr, uint8_t *p,
+                                   const struct stun_msg *msg);
+static uint8_t *attr_errcode_encode(const struct stun_attr_hdr *hdr, uint8_t *p,
+                                    const struct stun_msg *msg);
+static uint8_t *attr_unknown_encode(const struct stun_attr_hdr *hdr, uint8_t *p,
+                                    const struct stun_msg *msg);
+static uint8_t *attr_msgint_encode(const struct stun_attr_hdr *hdr, uint8_t *p,
+                                   const struct stun_msg *msg);
 
 struct attr_desc {
   const char *name;
-  uint8_t *(*encode)(struct stun_attr_hdr *, uint8_t *, struct stun_msg *);
+  uint8_t *(*encode)(const struct stun_attr_hdr *, uint8_t *, const struct stun_msg *);
+  int (*decode)(const struct stun_attr_hdr *, uint8_t **, const struct stun_msg *);
 };
 
 static struct attr_desc mandatory_attr_desc[] = {
@@ -230,10 +235,10 @@ static struct attr_desc mandatory_attr_desc[] = {
   { "PRIORITY", &attr_uint32_encode, },
 
   /* 0x0025 STUN_USE_CANDIDATE */
-  { "USE-CANDIDATE", &attr_empty_encode, }
+  { "USE-CANDIDATE", &attr_empty_encode, },
 
   /* 0x0026 STUN_PADDING */
-  { "PADDING", &attr_binary_encode, }
+  { "PADDING", &attr_binary_encode, },
 
   /* 0x0027 STUN_RESPONSE_PORT */
   { "RESPONSE-PORT", &attr_uint32_encode, },
@@ -247,6 +252,8 @@ static struct attr_desc mandatory_attr_desc[] = {
   /* 0x002A STUN_CONNECTION_ID */
   { "CONNECTION-ID", &attr_string_encode, },
 };
+
+#define STUN_EXTENDED_ATTR_START 0x8021
 
 static struct attr_desc extended_attr_desc[] = {
 
@@ -287,15 +294,15 @@ static struct attr_desc extended_attr_desc[] = {
   { "OTHER-ADDRESS", &attr_sockaddr_encode, },
 };
 
-static uint8_t *attr_empty_encode(struct stun_attr_hdr *hdr, uint8_t *p,
-                                  struct stun_msg *msg) {
+static uint8_t *attr_empty_encode(const struct stun_attr_hdr *hdr, uint8_t *p,
+                                  const struct stun_msg *msg) {
   p = store_uint16(p, hdr->type);
   p = store_uint16(p, hdr->length);
   return p;
 }
 
-static uint8_t *attr_sockaddr_encode(struct stun_attr_hdr *hdr, uint8_t *p,
-                                     struct stun_msg *msg) {
+static uint8_t *attr_sockaddr_encode(const struct stun_attr_hdr *hdr,
+                                     uint8_t *p, const struct stun_msg *msg) {
   size_t n;
   struct stun_attr_sockaddr *attr_sockaddr = (struct stun_attr_sockaddr *)hdr;
   p = attr_empty_encode(hdr, p, msg);
@@ -304,12 +311,12 @@ static uint8_t *attr_sockaddr_encode(struct stun_attr_hdr *hdr, uint8_t *p,
   p = store_uint16(p, attr_sockaddr->port);
   n = attr_sockaddr->family == STUN_IPV4 ? 4 : 16;
   memcpy(p, &attr_sockaddr->addr, n);
-  p += n;
-  return n;
+  return p + n;
 }
 
-static uint8_t *attr_sockaddr_xor_encode(struct stun_attr_hdr *hdr, uint8_t *p,
-                                         struct stun_msg *msg) {
+static uint8_t *attr_sockaddr_xor_encode(const struct stun_attr_hdr *hdr,
+                                         uint8_t *p,
+                                         const struct stun_msg *msg) {
   uint8_t *begin = p;
   struct stun_attr_sockaddr *attr_sockaddr = (struct stun_attr_sockaddr *)hdr;
   p = attr_sockaddr_encode(hdr, p, msg);
@@ -329,8 +336,8 @@ static uint8_t *attr_sockaddr_xor_encode(struct stun_attr_hdr *hdr, uint8_t *p,
   return p;
 }
 
-static uint8_t *attr_string_encode(struct stun_attr_hdr *hdr, uint8_t *p,
-                                   struct stun_msg *msg) {
+static uint8_t *attr_string_encode(const struct stun_attr_hdr *hdr, uint8_t *p,
+                                   const struct stun_msg *msg) {
   struct stun_attr_string *attr_string = (struct stun_attr_string *)hdr;
   p = attr_empty_encode(hdr, p, msg);
   memcpy(p, attr_string->value, hdr->length);
@@ -338,8 +345,8 @@ static uint8_t *attr_string_encode(struct stun_attr_hdr *hdr, uint8_t *p,
   return p;
 }
 
-static uint8_t *attr_binary_encode(struct stun_attr_hdr *hdr, uint8_t *p,
-                                   struct stun_msg *msg) {
+static uint8_t *attr_binary_encode(const struct stun_attr_hdr *hdr, uint8_t *p,
+                                   const struct stun_msg *msg) {
   struct stun_attr_binary *attr_binary = (struct stun_attr_binary *)hdr;
   p = attr_empty_encode(hdr, p, msg);
   memcpy(p, attr_binary->value, hdr->length);
@@ -347,24 +354,24 @@ static uint8_t *attr_binary_encode(struct stun_attr_hdr *hdr, uint8_t *p,
   return p;
 }
 
-static uint8_t *attr_uint32_encode(struct stun_attr_hdr *hdr, uint8_t *p,
-                                   struct stun_msg *msg) {
+static uint8_t *attr_uint32_encode(const struct stun_attr_hdr *hdr, uint8_t *p,
+                                   const struct stun_msg *msg) {
   struct stun_attr_uint32 *attr_uint32 = (struct stun_attr_uint32 *)hdr;
   p = attr_empty_encode(hdr, p, msg);
   p = store_uint32(p, attr_uint32->value);
   return p;
 }
 
-static uint8_t *attr_uint64_encode(struct stun_attr_hdr *hdr, uint8_t *p,
-                                   struct stun_msg *msg) {
+static uint8_t *attr_uint64_encode(const struct stun_attr_hdr *hdr, uint8_t *p,
+                                   const struct stun_msg *msg) {
   struct stun_attr_uint64 *attr_uint64 = (struct stun_attr_uint64 *)hdr;
   p = attr_empty_encode(hdr, p, msg);
   p = store_uint64(p, attr_uint64->value);
   return p;
 }
 
-static uint8_t *attr_errcode_encode(struct stun_attr_hdr *hdr, uint8_t *p,
-                                    struct stun_msg *msg) {
+static uint8_t *attr_errcode_encode(const struct stun_attr_hdr *hdr,
+                                    uint8_t *p, const struct stun_msg *msg) {
   int n;
   struct stun_attr_errcode *attr_errcode = (struct stun_attr_errcode *)hdr;
   p = attr_empty_encode(hdr, p, msg);
@@ -377,8 +384,8 @@ static uint8_t *attr_errcode_encode(struct stun_attr_hdr *hdr, uint8_t *p,
   return p;
 }
 
-static uint8_t *attr_unknown_encode(struct stun_attr_hdr *hdr, uint8_t *p,
-                                    struct stun_msg *msg) {
+static uint8_t *attr_unknown_encode(const struct stun_attr_hdr *hdr,
+                                    uint8_t *p, const struct stun_msg *msg) {
   uint16_t i, n;
   struct stun_attr_unknown *attr_unknown = (struct stun_attr_unknown *)hdr;
   p = attr_empty_encode(hdr, p, msg);
@@ -391,8 +398,8 @@ static uint8_t *attr_unknown_encode(struct stun_attr_hdr *hdr, uint8_t *p,
   return p;
 }
 
-static uint8_t *attr_msgint_encode(struct stun_attr_hdr *hdr, uint8_t *p,
-                                   struct stun_msg *msg) {
+static uint8_t *attr_msgint_encode(const struct stun_attr_hdr *hdr, uint8_t *p,
+                                   const struct stun_msg *msg) {
   struct stun_attr_msgint *attr_msgint = (struct stun_attr_msgint *)hdr;
   p = attr_empty_encode(hdr, p, msg);
   memcpy(p, attr_msgint->hmac, 20);
@@ -404,6 +411,21 @@ static void stun_attr_init(struct stun_attr_hdr *hdr, uint16_t type,
                            uint16_t length) {
   hdr->type = type;
   hdr->length = length;
+}
+
+static const struct attr_desc *find_attr_desc(uint16_t type)
+{
+  struct attr_desc *desc;
+  if (type < ARRAY_SIZE(mandatory_attr_desc)) {
+    desc = &mandatory_attr_desc[type];
+  } else if (type >= STUN_EXTENDED_ATTR_START
+             && type < STUN_EXTENDED_ATTR_START +
+                       ARRAY_SIZE(extended_attr_desc)) {
+    desc = &extended_attr_desc[type-0x8021];
+  } else {
+    return NULL;
+  }
+  return desc->name == NULL ? NULL : desc;
 }
 
 const char *stun_get_err_reason(int err_code) {
@@ -448,15 +470,15 @@ int stun_attr_sockaddr_init(struct stun_attr_sockaddr *attr, uint16_t type,
     attr->padding = 0;
     attr->family = STUN_IPV4;
     attr->port = ntohs(addr_in->sin_port);
-    memcpy(&attr->addr.v4, 4, &addr_in->sin_addr);
+    memcpy(&attr->addr.v4, &addr_in->sin_addr, 4);
     return STUN_OK;
   } else if (addr->sa_family == AF_INET6) {
-    struct sockaddr_in *addr_in6 = (struct sockaddr_in6 *) addr;
+    struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *) addr;
     stun_attr_init(&attr->hdr, type, 20);
     attr->padding = 0;
     attr->family = STUN_IPV6;
     attr->port = ntohs(addr_in6->sin6_port);
-    memcpy(&attr->addr.v6, 16, &addr_in6->sin6_addr);
+    memcpy(&attr->addr.v6, &addr_in6->sin6_addr, 16);
     return STUN_OK;
   } else {
     return STUN_ERR_NOT_SUPPORTED;
@@ -483,29 +505,29 @@ int stun_attr_binary_init(struct stun_attr_binary *attr, uint16_t type,
 
 void stun_attr_uint32_init(struct stun_attr_uint32 *attr, uint16_t type,
                            uint32_t value) {
-  stun_addr_init(&attr->hdr, type, sizeof(uint32_t));
+  stun_attr_init(&attr->hdr, type, sizeof(uint32_t));
   attr->value = value;
 }
 
-void stun_attr_uint64_init(struct stun_attr_uint32 *attr, uint16_t type,
+void stun_attr_uint64_init(struct stun_attr_uint64 *attr, uint16_t type,
                            uint64_t value) {
-  stun_addr_init(&attr->hdr, type, sizeof(uint64_t));
+  stun_attr_init(&attr->hdr, type, sizeof(uint64_t));
   attr->value = value;
 }
 
 int stun_attr_errcode_init(struct stun_attr_errcode *attr, int err_code,
                            const char *err_reason) {
   int reason_len;
+  if (err_code < 300 || err_code > 699)
+    return STUN_ERR_INVALID_ARG;
+  reason_len = strlen(err_reason);
   if (reason_len > STUN_MAX_STR_SIZE)
     return STUN_ERR_NO_MEMORY;
-  if (error_code < 300 || error_code > 699)
-    return STUN_ERR_INVALID_ARG;
-  reason_len = strlen(error_reason);
-  stun_addr_init(&attr->hdr, STUN_ERROR_CODE, reason_len + 4);
+  stun_attr_init(&attr->hdr, STUN_ERROR_CODE, reason_len + 4);
   attr->padding = 0;
-  attr->err_class = error_code / 100;
-  attr->err_code = error_code % 100;
-  memcpy(attr->err_reason, error_reason, reason_len);
+  attr->err_class = err_code / 100;
+  attr->err_code = err_code % 100;
+  memcpy(attr->err_reason, err_reason, reason_len);
   return STUN_OK;
 }
 
@@ -513,13 +535,13 @@ int stun_attr_unknown_init(struct stun_attr_unknown *attr,
                            const uint16_t *unknown_codes, size_t count) {
   if (count > STUN_MAX_ATTRS)
     return STUN_ERR_NO_MEMORY;
-  stun_addr_init(&attr->hdr, STUN_UNKNOWN_ATTRIBUTES, count * 2);
+  stun_attr_init(&attr->hdr, STUN_UNKNOWN_ATTRIBUTES, count * 2);
   memcpy(attr->attrs, unknown_codes, count * 2);
   return STUN_OK;
 }
 
 void stun_attr_msgint_init(struct stun_attr_msgint *attr) {
-  stun_addr_init(&attr->hdr, STUN_MESSAGE_INTEGRITY, 20);
+  stun_attr_init(&attr->hdr, STUN_MESSAGE_INTEGRITY, 20);
   memset(attr->hmac, 0, 20);
 }
 
@@ -536,13 +558,12 @@ int stun_msg_encode(const struct stun_msg *msg, void *buffer,
                     size_t bufferlen) {
   size_t i;
   uint8_t *p;
-  int status;
   struct stun_attr_msgint *msgint;
   struct stun_attr_uint32 *fingerprint;
 
   if (buffer == NULL)
     return msg->length + 20;
-  if (msg->length + 20 > bufferlen)
+  if ((size_t)(msg->length + 20) > bufferlen)
     return STUN_ERR_NO_MEMORY;
 
   p = (uint8_t *)buffer;
@@ -558,21 +579,21 @@ int stun_msg_encode(const struct stun_msg *msg, void *buffer,
   fingerprint = NULL;
   for (i = 0; i < msg->attr_count; ++i) {
     const struct attr_desc *desc;
-    const struct stun_attr_hdr *attr_hdr = msg->attrs[i];
+    struct stun_attr_hdr *hdr = msg->attrs[i];
 
-    if (attr_hdr->type == STUN_MESSAGE_INTEGRITY) {
-      msgint = (struct stun_attr_msgint *)attr_hdr;
+    if (hdr->type == STUN_MESSAGE_INTEGRITY) {
+      msgint = (struct stun_attr_msgint *)hdr;
       continue;
-    } else if (attr_hdr->type == STUN_FINGERPRINT) {
-      fingerprint = (struct stun_attr_uint32 *)attr_hdr;
+    } else if (hdr->type == STUN_FINGERPRINT) {
+      fingerprint = (struct stun_attr_uint32 *)hdr;
       continue;
     }
 
-    desc = find_attr_desc(attr_hdr->type);
+    desc = find_attr_desc(hdr->type);
     if (!desc)
-      return STUN_ERR_UKNOWN_ATTRIBUTE;
+      return STUN_ERR_UNKNOWN_ATTRIBUTE;
 
-    p = (*adesc->encode)(attr_hdr, p, msg);
+    p = (*desc->encode)(hdr, p, msg);
   }
 
   /* MESSAGE-INTEGRITY must be always the last attribute */
@@ -585,7 +606,8 @@ int stun_msg_encode(const struct stun_msg *msg, void *buffer,
   /* Oh, no, FINGERPRINT must be the last one, after MESSAGE-INTEGRITY */
   if (fingerprint) {
     fingerprint->value = crc32(0, p, p - (uint8_t *)buffer);
-    p = attr_uint_encode(&fingerprint->hdr, p, msg);
+    fingerprint->value ^= STUN_XOR_FINGERPRINT;
+    p = attr_uint32_encode(&fingerprint->hdr, p, msg);
   }
 
   return p - (uint8_t *)buffer;
@@ -594,6 +616,7 @@ int stun_msg_encode(const struct stun_msg *msg, void *buffer,
 int stun_msg_decode(struct stun_msg *msg, void *packet, size_t packetlen,
                     void *buffer, size_t bufferlen,
                     struct stun_attr_unknown *unknown_attr) {
+  int status;
   uint8_t *p = (uint8_t *)packet;
   uint8_t *buf = (uint8_t *)buffer;
   uint8_t *p_end = p + packetlen;
@@ -611,14 +634,15 @@ int stun_msg_decode(struct stun_msg *msg, void *packet, size_t packetlen,
   p = read_uint16(p, &msg->length);
 
   /* Check the length */
-  if (msg->length + 20 > packetlen)
+  if ((size_t)(msg->length + 20) > packetlen)
     return STUN_ERR_TOO_SMALL;
 
-  p = read_uint16(p, &msg->magic);
+  p = read_uint32(p, &msg->magic);
   memcpy(msg->tsx_id, p, sizeof(msg->tsx_id));
   p += sizeof(msg->tsx_id);
 
-  stun_empty_attr_init(&unknown_attr->hdr, STUN_UNKNOWN_ATTRIBUTES);
+  stun_attr_empty_init((struct stun_attr_empty *)unknown_attr,
+      STUN_UNKNOWN_ATTRIBUTES);
 
   msg->attr_count = 0;
   while (p != p_end) {
@@ -634,7 +658,7 @@ int stun_msg_decode(struct stun_msg *msg, void *packet, size_t packetlen,
       if ((unknown_attr->hdr.length >> 1) == STUN_MAX_ATTRS)
         return STUN_ERR_UNKNOWN_ATTRIBUTE;
     } else {
-      status = (*desc->decode)(hdr, msg, &buf);
+      status = (*desc->decode)(hdr, &buf, msg);
       if (status < STUN_OK)
         return status;
     }
@@ -645,4 +669,3 @@ int stun_msg_decode(struct stun_msg *msg, void *packet, size_t packetlen,
 
   return STUN_OK;
 }
-
