@@ -261,6 +261,7 @@ enum stun_status_type {
   STUN_ERR_TRAIL_ATTRIBUTES  = -7,
   STUN_ERR_BAD_MSGINT        = -8,
   STUN_ERR_BAD_FINGERPRINT   = -9,
+  STUN_ERR_KEY_NOTAVAIL      = -10,
 };
 
 /* Get STUN standard reason phrase for the specified error code. NULL is

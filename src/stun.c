@@ -327,10 +327,11 @@ static uint8_t *attr_sockaddr_xor_encode(const struct stun_attr_hdr *hdr,
   p = attr_sockaddr_encode(hdr, p, msg);
   p = begin + 4 + 2; /* advance to the port */
   *(uint16_t *)p ^= htons((uint16_t)(STUN_MAGIC_COOKIE >> 16));
-  p += 2; /* advance to the address */
+  p += 2; /* advance the port */
   *(uint32_t *)p ^= htonl(STUN_MAGIC_COOKIE);
+  p += 4; /* advance the address */
   if (attr_sockaddr->family == STUN_IPV6) {
-    /* the IPv6 address has to be XOR'ed with the transaction id */
+    /* rest of IPv6 address has to be XOR'ed with the transaction id */
     *p++ ^= msg->tsx_id[0];  *p++ ^= msg->tsx_id[1];
     *p++ ^= msg->tsx_id[2];  *p++ ^= msg->tsx_id[3];
     *p++ ^= msg->tsx_id[4];  *p++ ^= msg->tsx_id[5];
@@ -566,7 +567,7 @@ int stun_msg_encode(const struct stun_msg *msg,
                     void *buffer, size_t bufferlen,
                     const uint8_t *key, int key_len) {
   size_t i;
-  uint8_t *p;
+  uint8_t *p, *p_len;
   struct stun_attr_msgint *msgint;
   struct stun_attr_uint32 *fingerprint;
 
@@ -578,8 +579,8 @@ int stun_msg_encode(const struct stun_msg *msg,
   p = (uint8_t *)buffer;
 
   /* Copy the STUN message header */
-  p = store_uint16(p, msg->type);
-  p = store_uint16(p, msg->length);
+  p_len = p = store_uint16(p, msg->type);
+  p = store_uint16(p, 0); /* add a dummy value for now */
   p = store_uint32(p, msg->magic);
   memcpy(p, msg->tsx_id, sizeof(msg->tsx_id));
   p += sizeof(msg->tsx_id);
@@ -607,10 +608,17 @@ int stun_msg_encode(const struct stun_msg *msg,
 
   /* MESSAGE-INTEGRITY must be always the last attribute */
   if (msgint) {
-    hmac_sha1((uint8_t *)buffer, p - (uint8_t *)buffer, key,
-              key_len, msgint->hmac);
+    if (!key)
+      return STUN_ERR_KEY_NOTAVAIL;
+    /* The length doesn't include the FINGERPRINT size, when available */
+    store_uint16(p_len, (uint16_t)((p - (uint8_t *)buffer) - 20 + 24));
+    hmac_sha1((uint8_t *)buffer, p - (uint8_t *)buffer,
+              key, key_len, msgint->hmac);
     p = attr_msgint_encode(&msgint->hdr, p, msg);
   }
+
+  /* Store the length now */
+  store_uint16(p_len, msg->length);
 
   /* Oh, no, FINGERPRINT must be the last one, after MESSAGE-INTEGRITY */
   if (fingerprint) {
