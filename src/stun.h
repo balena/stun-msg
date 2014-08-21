@@ -314,6 +314,9 @@ void stun_attr_msgint_init(struct stun_attr_msgint *attr);
  */
 int stun_msg_add_attr(struct stun_msg *msg, struct stun_attr_hdr *attr);
 
+/* Sets the padding byte to the given value. */
+void stun_set_padding_byte(uint8_t byte);
+
 /* Encodes the STUN message to a packet buffer. This function will take care
  * about calculating the MESSAGE-INTEGRITY digest as well as FINGERPRINT value,
  * if these attributes are present in the message.
@@ -329,9 +332,9 @@ int stun_msg_add_attr(struct stun_msg *msg, struct stun_attr_hdr *attr);
  *
  * Returns a negative value in case of errors, or STUN_OK if succeeded.
  */
-int stun_msg_encode(const struct stun_msg *msg, void *buffer,
-                    const uint8_t *key, int key_len,
-                    size_t bufferlen);
+int stun_msg_encode(const struct stun_msg *msg,
+                    void *buffer, size_t bufferlen,
+                    const uint8_t *key, int key_len);
 
 /* Decodes the STUN message from the packet buffer. This function will change
  * the data available in the buffer, and the STUN message will point to

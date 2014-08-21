@@ -20,21 +20,21 @@ typedef union {
 
 /* blk0() and blk() perform the initial expand. */
 /* I got the idea of expanding during the round function from SSLeay */
-#ifdef LITTLE_ENDIAN
+#ifdef WORDS_BIGENDIAN
+#define blk0(i) block->l[i]
+#else
 #define blk0(i) (block->l[i] = (rol(block->l[i],24)&0xFF00FF00) \
     |(rol(block->l[i],8)&0x00FF00FF))
-#else
-#define blk0(i) block->l[i]
 #endif
 #define blk(i) (block->l[i&15] = rol(block->l[(i+13)&15]^block->l[(i+8)&15] \
     ^block->l[(i+2)&15]^block->l[i&15],1))
 
 /* (R0+R1), R2, R3, R4 are the different operations used in SHA1 */
-#define R0(v,w,x,y,z,i) z+=((w&(x^y))^y)+blk0(i)+0x5A827999+rol(v,5);w=rol(w,30);
-#define R1(v,w,x,y,z,i) z+=((w&(x^y))^y)+blk(i)+0x5A827999+rol(v,5);w=rol(w,30);
-#define R2(v,w,x,y,z,i) z+=(w^x^y)+blk(i)+0x6ED9EBA1+rol(v,5);w=rol(w,30);
-#define R3(v,w,x,y,z,i) z+=(((w|x)&y)|(w&x))+blk(i)+0x8F1BBCDC+rol(v,5);w=rol(w,30);
-#define R4(v,w,x,y,z,i) z+=(w^x^y)+blk(i)+0xCA62C1D6+rol(v,5);w=rol(w,30);
+#define R0(v,w,x,y,z,i) z+=((w&(x^y))^y)+blk0(i)+0x5A827999ul+rol(v,5);w=rol(w,30);
+#define R1(v,w,x,y,z,i) z+=((w&(x^y))^y)+blk(i)+0x5A827999ul+rol(v,5);w=rol(w,30);
+#define R2(v,w,x,y,z,i) z+=(w^x^y)+blk(i)+0x6ED9EBA1ul+rol(v,5);w=rol(w,30);
+#define R3(v,w,x,y,z,i) z+=(((w|x)&y)|(w&x))+blk(i)+0x8F1BBCDCul+rol(v,5);w=rol(w,30);
+#define R4(v,w,x,y,z,i) z+=(w^x^y)+blk(i)+0xCA62C1D6ul+rol(v,5);w=rol(w,30);
 
 
 /* Hash a single 512-bit block. This is the core of the algorithm. */
@@ -134,3 +134,74 @@ void SHA1Final(uint8_t digest[20], SHA1_CTX *context)
       (uint8_t)((context->state[i >> 2] >> ((3 - (i & 3)) * 8)) & 255);
   }
 }
+
+#ifdef SHA1_TEST
+#include <stdio.h>
+#include <string.h>
+
+static char *test_data[] = {
+  "abc",
+  "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq",
+  "A million repetitions of 'a'"};
+static char *test_results[] = {
+  "A9993E36 4706816A BA3E2571 7850C26C 9CD0D89D",
+  "84983E44 1C3BD26E BAAE4AA1 F95129E5 E54670F1",
+  "34AA973C D4C4DAA4 F61EEB2B DBAD2731 6534016F"};
+
+void digest_to_hex(const uint8_t digest[20], char *output) {
+  int i,j;
+  char *c = output;
+
+  for (i = 0; i < 20/4; i++) {
+    for (j = 0; j < 4; j++) {
+      sprintf(c,"%02X", digest[i*4+j]);
+      c += 2;
+    }
+    sprintf(c, " ");
+    c += 1;
+  }
+  *(c - 1) = '\0';
+}
+
+int main() {
+  int k;
+  SHA1_CTX context;
+  uint8_t digest[20];
+  char output[80];
+
+  fprintf(stdout, "verifying SHA-1 implementation... ");
+
+  for (k = 0; k < 2; k++){
+    SHA1Init(&context);
+    SHA1Update(&context, (uint8_t*)test_data[k], strlen(test_data[k]));
+    SHA1Final(digest, &context);
+    digest_to_hex(digest, output);
+
+    if (strcmp(output, test_results[k])) {
+      fprintf(stdout, "FAIL\n");
+      fprintf(stderr,"* hash of \"%s\" incorrect:\n", test_data[k]);
+      fprintf(stderr,"\t%s returned\n", output);
+      fprintf(stderr,"\t%s is correct\n", test_results[k]);
+      return (1);
+    }
+  }
+  /* million 'a' vector we feed separately */
+  SHA1Init(&context);
+  for (k = 0; k < 1000000; k++)
+    SHA1Update(&context, (uint8_t*)"a", 1);
+  SHA1Final(digest, &context);
+  digest_to_hex(digest, output);
+  if (strcmp(output, test_results[2])) {
+    fprintf(stdout, "FAIL\n");
+    fprintf(stderr,"* hash of \"%s\" incorrect:\n", test_data[2]);
+    fprintf(stderr,"\t%s returned\n", output);
+    fprintf(stderr,"\t%s is correct\n", test_results[2]);
+    return (1);
+  }
+
+  /* success */
+  fprintf(stdout, "ok\n");
+  return(0);
+}
+
+#endif /* SHA1_TEST */

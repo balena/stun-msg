@@ -67,3 +67,68 @@ void hmac_sha1(const uint8_t *text, int text_len,
   SHA1Update(&context, digest, 20);     /* then results of 1st hash */
   SHA1Final(digest, &context);          /* finish up 2nd pass */
 }
+
+#ifdef HMAC_SHA1_TEST
+#include <stdio.h>
+#include <stdlib.h>
+
+int test(int n,
+         const uint8_t *key, size_t key_len,
+         const uint8_t *data, size_t data_len,
+         const uint8_t *digest) {
+  uint8_t out[20];
+  hmac_sha1(key, key_len, data, data_len, out);
+  if (memcmp(digest, out, 20) != 0) {
+    size_t i;
+    printf("hash %d mismatch. expected:\n", n);
+    for (i = 0; i < 20; i++)
+      printf("%02x ", digest[i] & 0xFF);
+    printf("\ncomputed:\n");
+    for (i = 0; i < 20; i++)
+      printf("%02x ", out[i] & 0xFF);
+    printf("\n");
+    return 1;
+  }
+  return 0;
+}
+
+int main()
+{
+  struct {
+    const char *key;
+    size_t key_len;
+    const char *data;
+    size_t data_len;
+    const char *digest;
+  } tests[] = {
+    { "\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b", 16,
+      "Hi There", 8,
+      "\x67\x5b\x0b\x3a\x1b\x4d\xdf\x4e\x12\x48"
+      "\x72\xda\x6c\x2f\x63\x2b\xfe\xd9\x57\xe9" },
+    { "Jefe", 4,
+      "what do ya want for nothing?", 28,
+      "\xef\xfc\xdf\x6a\xe5\xeb\x2f\xa2\xd2\x74"
+      "\x16\xd5\xf1\x84\xdf\x9c\x25\x9a\x7c\x79" },
+    { "\xAA\xAA\xAA\xAA\xAA\xAA\xAA\xAA\xAA\xAA\xAA\xAA\xAA\xAA\xAA\xAA", 16,
+      "\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD"
+      "\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD"
+      "\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD\xDD"
+      "\xDD\xDD", 50,
+      "\xd7\x30\x59\x4d\x16\x7e\x35\xd5\x95\x6f"
+      "\xd8\x00\x3d\x0d\xb3\xd3\xf4\x6d\xc7\xbb" },
+  };
+  int i;
+
+  for (i = 0; i < sizeof(tests)/sizeof(tests[0]); i++) {
+    if(test(i+1, (uint8_t*)tests[i].data, tests[i].data_len,
+            (uint8_t*)tests[i].key, tests[i].key_len,
+            (uint8_t*)tests[i].digest)) {
+      return 1;
+    }
+  }
+
+  printf("ok\n");
+  return 0;
+}
+
+#endif
