@@ -11,6 +11,7 @@
 #include "sha1.h"
 #include "hmac_sha1.h"
 #include "crc32.h"
+#include "md5.h"
 
 /* Include these for sockaddr_in and sockaddr_in6 */
 #ifdef _WIN32
@@ -565,11 +566,13 @@ void stun_set_padding_byte(uint8_t byte) {
 
 int stun_msg_encode(const struct stun_msg *msg,
                     void *buffer, size_t bufferlen,
-                    const uint8_t *key, int key_len) {
+                    const uint8_t *password, int password_len) {
   size_t i;
   uint8_t *p, *p_len;
-  struct stun_attr_msgint *msgint;
-  struct stun_attr_uint32 *fingerprint;
+  struct stun_attr_msgint *msgint = NULL;
+  struct stun_attr_uint32 *fingerprint = NULL;
+  struct stun_attr_string *username = NULL;
+  struct stun_attr_string *realm = NULL;
 
   if (buffer == NULL)
     return msg->length + 20;
@@ -585,8 +588,6 @@ int stun_msg_encode(const struct stun_msg *msg,
   memcpy(p, msg->tsx_id, sizeof(msg->tsx_id));
   p += sizeof(msg->tsx_id);
 
-  msgint = NULL;
-  fingerprint = NULL;
   for (i = 0; i < msg->attr_count; ++i) {
     const struct attr_desc *desc;
     struct stun_attr_hdr *hdr = msg->attrs[i];
@@ -597,6 +598,10 @@ int stun_msg_encode(const struct stun_msg *msg,
     } else if (hdr->type == STUN_FINGERPRINT) {
       fingerprint = (struct stun_attr_uint32 *)hdr;
       continue;
+    } else if (hdr->type == STUN_USERNAME) {
+      username = (struct stun_attr_string *)hdr;
+    } else if (hdr->type == STUN_REALM) {
+      realm = (struct stun_attr_string *)hdr;
     }
 
     desc = find_attr_desc(hdr->type);
@@ -608,12 +613,26 @@ int stun_msg_encode(const struct stun_msg *msg,
 
   /* MESSAGE-INTEGRITY must be always the last attribute */
   if (msgint) {
-    if (!key)
-      return STUN_ERR_KEY_NOTAVAIL;
+    if (!password)
+      return STUN_ERR_PWD_NOTAVAIL;
     /* The length doesn't include the FINGERPRINT size, when available */
     store_uint16(p_len, (uint16_t)((p - (uint8_t *)buffer) - 20 + 24));
-    hmac_sha1((uint8_t *)buffer, p - (uint8_t *)buffer,
-              key, key_len, msgint->hmac);
+    if (username && realm) {
+      uint8_t digest[16];
+      MD5_CTX context;
+      MD5_Init(&context);
+      MD5_Update(&context, username->value, username->hdr.length);
+      MD5_Update(&context, ":", 1);
+      MD5_Update(&context, realm->value, realm->hdr.length);
+      MD5_Update(&context, ":", 1);
+      MD5_Update(&context, password, password_len);
+      MD5_Final(digest, &context);
+      hmac_sha1((uint8_t *)buffer, p - (uint8_t *)buffer,
+                digest, 16, msgint->hmac);
+    } else {
+      hmac_sha1((uint8_t *)buffer, p - (uint8_t *)buffer,
+                password, password_len, msgint->hmac);
+    }
     p = attr_msgint_encode(&msgint->hdr, p, msg);
   }
 
@@ -640,6 +659,8 @@ int stun_msg_decode(struct stun_msg *msg, void *packet, size_t packetlen,
   uint8_t *p_end = p + packetlen;
   uint8_t *buf = (uint8_t *)buffer;
   uint8_t *buf_end = buf + bufferlen;
+  struct stun_attr_string *username = NULL;
+  struct stun_attr_string *realm = NULL;
   struct stun_attr_msgint *msgint = NULL;
   struct stun_attr_uint32 *fingerprint = NULL;
 
@@ -695,6 +716,10 @@ int stun_msg_decode(struct stun_msg *msg, void *packet, size_t packetlen,
       } else if (hdr->type == STUN_FINGERPRINT) {
         fingerprint = (struct stun_attr_uint32*)hdr;
         p_fingerprint = p - 4;
+      } else if (hdr->type == STUN_USERNAME) {
+        username = (struct stun_attr_string*)hdr;
+      } else if (hdr->type = STUN_REALM) {
+        realm = (struct stun_attr_string*)hdr;
       }
     }
 

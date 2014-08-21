@@ -15,6 +15,7 @@ add_library(stun-msg STATIC
   src/crc32.c src/crc32.h
   src/hmac_sha1.c src/hmac_sha1.h
   src/sha1.c src/sha1.h
+  src/md5.c src/md5.h
   src/stun.c src/stun.h
 )
 

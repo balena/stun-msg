@@ -261,7 +261,7 @@ enum stun_status_type {
   STUN_ERR_TRAIL_ATTRIBUTES  = -7,
   STUN_ERR_BAD_MSGINT        = -8,
   STUN_ERR_BAD_FINGERPRINT   = -9,
-  STUN_ERR_KEY_NOTAVAIL      = -10,
+  STUN_ERR_PWD_NOTAVAIL      = -10,
 };
 
 /* Get STUN standard reason phrase for the specified error code. NULL is
@@ -326,7 +326,10 @@ void stun_set_padding_byte(uint8_t byte);
  * a blank MESSAGE-INTEGRITY attribute in the message, in any order (the
  * encoder will put the attribute as the last one, before FINGERPRINT, if it
  * exists). This function will calculate the HMAC-SHA1 digest from the message
- * using the supplied key parameter.
+ * using the supplied key parameter. If the message contains USERNAME and REALM
+ * attributes, then the hash key will be calculated as specified in RFC 5389:
+ * MD5(username ":" realm ":" password). Otherwise the hash key is simply the
+ * input password.
  *
  * If FINGERPRINT attribute is present (any order), this function will
  * calculate the FINGERPRINT CRC attribute for the message.
@@ -335,7 +338,7 @@ void stun_set_padding_byte(uint8_t byte);
  */
 int stun_msg_encode(const struct stun_msg *msg,
                     void *buffer, size_t bufferlen,
-                    const uint8_t *key, int key_len);
+                    const uint8_t *password, int password_len);
 
 /* Decodes the STUN message from the packet buffer. This function will change
  * the data available in the buffer, and the STUN message will point to
