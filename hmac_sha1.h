@@ -8,8 +8,16 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void hmac_sha1(const uint8_t *text, int text_len,
                const uint8_t *key, int key_len,
-               uint8_t digest[20])
+               uint8_t digest[20]);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* __HMAC_SHA1_H__ */
