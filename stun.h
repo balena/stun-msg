@@ -258,6 +258,9 @@ enum stun_status_type {
   STUN_ERR_UNKNOWN_ATTRIBUTE = -4,
   STUN_ERR_TOO_SMALL         = -5,
   STUN_ERR_BAD_TYPE          = -6,
+  STUN_ERR_TRAIL_ATTRIBUTES  = -7,
+  STUN_ERR_BAD_MSGINT        = -8,
+  STUN_ERR_BAD_FINGERPRINT   = -9,
 };
 
 /* Get STUN standard reason phrase for the specified error code. NULL is
@@ -338,6 +341,7 @@ int stun_msg_encode(const struct stun_msg *msg, void *buffer,
  */
 int stun_msg_decode(struct stun_msg *msg, void *packet, size_t packetlen,
                     void *buffer, size_t bufferlen,
+                    const uint8_t *key, int key_len,
                     struct stun_attr_unknown *unknown_attr);
 
 int stun_attr_sockaddr_read(const struct stun_attr_sockaddr *attr,

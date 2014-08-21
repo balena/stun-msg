@@ -119,7 +119,7 @@ static uint8_t *attr_msgint_encode(const struct stun_attr_hdr *hdr, uint8_t *p,
 struct attr_desc {
   const char *name;
   uint8_t *(*encode)(const struct stun_attr_hdr *, uint8_t *, const struct stun_msg *);
-  int (*decode)(const struct stun_attr_hdr *, uint8_t **, const struct stun_msg *);
+  int (*decode)(const struct stun_attr_hdr *, uint8_t **, uint8_t *, const struct stun_msg *);
 };
 
 static struct attr_desc mandatory_attr_desc[] = {
@@ -605,7 +605,7 @@ int stun_msg_encode(const struct stun_msg *msg, void *buffer,
 
   /* Oh, no, FINGERPRINT must be the last one, after MESSAGE-INTEGRITY */
   if (fingerprint) {
-    fingerprint->value = crc32(0, p, p - (uint8_t *)buffer);
+    fingerprint->value = crc32(0, (uint8_t *)buffer, p - (uint8_t *)buffer);
     fingerprint->value ^= STUN_XOR_FINGERPRINT;
     p = attr_uint32_encode(&fingerprint->hdr, p, msg);
   }
@@ -615,12 +615,16 @@ int stun_msg_encode(const struct stun_msg *msg, void *buffer,
 
 int stun_msg_decode(struct stun_msg *msg, void *packet, size_t packetlen,
                     void *buffer, size_t bufferlen,
+                    const uint8_t *key, int key_len,
                     struct stun_attr_unknown *unknown_attr) {
   int status;
+  uint8_t *p_msgint, *p_fingerprint;
   uint8_t *p = (uint8_t *)packet;
   uint8_t *buf = (uint8_t *)buffer;
   uint8_t *p_end = p + packetlen;
   uint8_t *buf_end = p + packetlen;
+  struct stun_attr_msgint *msgint = NULL;
+  struct stun_attr_uint32 *fingerprint = NULL;
 
   /* The message must be of least the header size */
   if (packetlen < 20)
@@ -651,20 +655,56 @@ int stun_msg_decode(struct stun_msg *msg, void *packet, size_t packetlen,
     p = read_uint16(p, &hdr->type);
     p = read_uint16(p, &hdr->length);
 
+    if (fingerprint || (msgint && hdr->type != STUN_FINGERPRINT)) {
+      return STUN_ERR_TRAIL_ATTRIBUTES;
+    }
+
     desc = find_attr_desc(hdr->type);
     if (!desc) {
+      /* Store unknown attributes for creating an error response */
       unknown_attr->attrs[unknown_attr->hdr.length >> 1] = hdr->type;
       unknown_attr->hdr.length += 2;
       if ((unknown_attr->hdr.length >> 1) == STUN_MAX_ATTRS)
         return STUN_ERR_UNKNOWN_ATTRIBUTE;
     } else {
-      status = (*desc->decode)(hdr, &buf, msg);
+      /* Decode the attributes using the provided buffer */
+      status = (*desc->decode)(hdr, &buf, buf_end, msg);
       if (status < STUN_OK)
         return status;
+
+      if (hdr->type == STUN_MESSAGE_INTEGRITY) {
+        msgint = (struct stun_attr_msgint*)hdr;
+        p_msgint = p - 4;
+      } else if (hdr->type == STUN_FINGERPRINT) {
+        fingerprint = (struct stun_attr_uint32*)hdr;
+        p_fingerprint = p - 4;
+      }
     }
 
+    /* Set the parsed attribute and point to next attribute */
     msg->attrs[msg->attr_count++] = hdr;
     p += (hdr->length + 3) & (~3);
+  }
+
+  if (unknown_attr->hdr.length > 0)
+    return STUN_ERR_UNKNOWN_ATTRIBUTE;
+
+  /* Check the MESSAGE-INTEGRITY if present */
+  if (msgint && key) {
+    uint8_t hmac[20];
+    hmac_sha1((uint8_t *)packet, p_msgint - (uint8_t *)packet, key,
+              key_len, hmac);
+    if (memcmp(hmac, msgint->hmac, 20) != 0)
+      return STUN_ERR_BAD_MSGINT;
+  }
+
+  /* Check the FINGERPRINT if present */
+  if (fingerprint) {
+    uint32_t value = crc32(0, (uint8_t *)packet,
+        p_fingerprint - (uint8_t *)buffer);
+    value ^= STUN_XOR_FINGERPRINT;
+    if (value != fingerprint->value)
+      return STUN_ERR_BAD_FINGERPRINT;
   }
 
   return STUN_OK;
