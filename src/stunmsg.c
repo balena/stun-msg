@@ -7,7 +7,7 @@
  * present and future rights to this software under copyright law.
  */
 
-#include "stun.h"
+#include "stunmsg.h"
 #include "sha1.h"
 #include "hmac_sha1.h"
 #include "crc32.h"
@@ -31,7 +31,7 @@
 #define UNUSED(x) ((void)(x))
 
 static uint64_t htonll(uint64_t value) {
-  int num = 42;
+  const int num = 42;
   if(*(char *)&num == 42) { /* test little endian */
     return (((uint64_t)htonl((uint32_t)value)) << 32)
            | htonl((uint32_t)(value >> 32));
@@ -461,7 +461,7 @@ uint32_t stun_attr_uint32_read(const struct stun_attr_uint32 *attr) {
   return ntohl(attr->value);
 }
 
-uint64_t stun_attr_uint64_read(const struct stun_attr_uint32 *attr) {
+uint64_t stun_attr_uint64_read(const struct stun_attr_uint64 *attr) {
   return ntohll(attr->value);
 }
 

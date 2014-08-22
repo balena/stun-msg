@@ -7,8 +7,8 @@
  * present and future rights to this software under copyright law.
  */
 
-#ifndef __STUN_H__
-#define __STUN_H__
+#ifndef __STUNMSG_H__
+#define __STUNMSG_H__
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -412,7 +412,7 @@ const uint8_t *stun_attr_varsize_read(const struct stun_attr_varsize *attr);
 uint32_t stun_attr_uint32_read(const struct stun_attr_uint32 *attr);
 
 /* Reads a 64-bit attribute */
-uint64_t stun_attr_uint64_read(const struct stun_attr_uint32 *attr);
+uint64_t stun_attr_uint64_read(const struct stun_attr_uint64 *attr);
 
 /* Gets the status code from the ERROR-CODE attribute */
 int stun_attr_errcode_status(const struct stun_attr_errcode *attr);
@@ -439,4 +439,4 @@ void stun_key(const char *username, const char *realm, const char *password,
 };
 #endif
 
-#endif // __STUN_H__
+#endif // __STUNMSG_H__
