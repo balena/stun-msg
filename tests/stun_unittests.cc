@@ -8,6 +8,8 @@
  */
 
 #include <stun.h>
+#include <md5.h>
+#include <sstream>
 #include <gtest/gtest.h>
 
 /* Include these for sockaddr_in and sockaddr_in6 */
@@ -23,36 +25,46 @@
 #include <netinet/in.h>
 #endif
 
-void print_word(const uint8_t *v, size_t size) {
+void PrintWord(const uint8_t *v, size_t size, std::ostream &out) {
   size_t i;
   for (i = 0; i < size; i++) {
     if (i > 0)
-      printf(" ");
-    printf("%02x", v[i]);
+      out << " ";
+    out << std::setfill('0')
+        << std::setw(2)
+        << std::hex
+        << (int)v[i];
   }
 }
 
-int compare_vectors(const uint8_t *a, const uint8_t *b, size_t size) {
+::testing::AssertionResult IsEqual(const uint8_t *a, const uint8_t *b,
+                                   size_t size) {
+  std::ostringstream out;
   size_t i, errors = 0;
   for (i = 0; i < size; i += 4) {
     int len = 4;
     if (i + len > size)
       len = size - i;
-    printf("  ");
-    print_word(a+i, len);
+    out << "  ";
+    PrintWord(a+i, len, out);
     if (memcmp(a+i, b+i, len) == 0) {
-      printf("   ");
+      out << "   ";
     } else {
-      printf(" ! ");
+      out << " ! ";
       ++errors;
     }
-    print_word(b+i, len);
-    printf("\n");
+    PrintWord(b+i, len, out);
+    out << "\n";
   }
-  return errors;
+  if (!errors)
+    return ::testing::AssertionSuccess();
+  else
+    return ::testing::AssertionFailure()
+        << "A and B aren't equal:\n"
+        << out.str();
 }
 
-TEST(StunMsg, BasicBindingRequest) {
+TEST(StunMsgEncode, BasicBindingRequest) {
   const uint8_t expected_result[] = {
     0x00,0x01,0x00,0x00, //    Request type and message length
     0x21,0x12,0xa4,0x42, //    Magic cookie
@@ -60,23 +72,31 @@ TEST(StunMsg, BasicBindingRequest) {
     0x8a,0x05,0x28,0x45, // }  Transaction ID
     0x6a,0x8e,0xf1,0xe2  // }
   };
-  uint8_t buffer[sizeof(expected_result)];
-  stun_msg msg;
+  
+  uint8_t buffer[sizeof(stun_msg_hdr)];
+
   uint8_t tsx_id[12] = {
     0xfd,0x95,0xe8,0x83,
     0x8a,0x05,0x28,0x45,
     0x6a,0x8e,0xf1,0xe2
   };
-  stun_msg_init(&msg, STUN_BINDING_REQUEST, tsx_id);
-  int rv = stun_msg_encode(&msg, buffer, sizeof(buffer), NULL, 0);
-  ASSERT_EQ(sizeof(buffer), rv);
-  EXPECT_EQ(0, memcmp(expected_result, buffer, rv));
+
+  ASSERT_EQ(sizeof(expected_result), sizeof(buffer));
+  ASSERT_EQ(1, stun_msg_verify((stun_msg_hdr*)expected_result,
+      sizeof(expected_result)));
+
+  stun_msg_hdr *msg_hdr = (stun_msg_hdr *)buffer;
+  stun_msg_hdr_init(msg_hdr, STUN_BINDING_REQUEST, tsx_id);
+
+  EXPECT_TRUE(IsEqual(expected_result, buffer,
+      sizeof(expected_result)));
 }
 
-TEST(StunMsg, RFC5769SampleRequest) {
+TEST(StunMsgEncode, RFC5769SampleRequest) {
   const char software_name[] = "STUN test client";
   const char username[] = "evtj:h6vY";
   const char password[] = "VOkJxbRl1RmTxUk/WvJxBt";
+
   const uint8_t expected_result[] = {
     0x00,0x01,0x00,0x58, //    Request type and message length
     0x21,0x12,0xa4,0x42, //    Magic cookie
@@ -106,55 +126,44 @@ TEST(StunMsg, RFC5769SampleRequest) {
     0x80,0x28,0x00,0x04, //    FINGERPRINT attribute header
     0xe5,0x7a,0x3b,0xcf, //    CRC0x32, fingerprint
   };
-  uint8_t buffer[sizeof(expected_result)];
-  stun_msg msg;
+
+  uint8_t buffer[sizeof(stun_msg_hdr)
+    + STUN_ATTR_VARSIZE_SIZE(sizeof(software_name) - 1)
+    + STUN_ATTR_UINT32_SIZE
+    + STUN_ATTR_UINT64_SIZE
+    + STUN_ATTR_VARSIZE_SIZE(sizeof(username) - 1)
+    + STUN_ATTR_MSGINT_SIZE
+    + STUN_ATTR_FINGERPRINT_SIZE];
+
   uint8_t tsx_id[12] = {
     0xb7,0xe7,0xa7,0x01,
     0xbc,0x34,0xd6,0x86,
     0xfa,0x87,0xdf,0xae
   };
-  
-  stun_attr_string software;
-  stun_attr_uint32 priority;
-  stun_attr_uint64 ice_controlled;
-  stun_attr_string username_attr;
-  stun_attr_msgint msgint;
-  stun_attr_uint32 fingerprint;
-  
-  stun_set_padding_byte((uint8_t)' ');
-  
-  stun_msg_init(&msg, STUN_BINDING_REQUEST, tsx_id);
-  
-  stun_attr_string_init(&software, STUN_SOFTWARE, software_name,
-      strlen(software_name));
-  stun_msg_add_attr(&msg, &software.hdr);
-  
-  stun_attr_uint32_init(&priority, STUN_PRIORITY, 0x6e0001fful);
-  stun_msg_add_attr(&msg, &priority.hdr);
-  
-  stun_attr_uint64_init(&ice_controlled, STUN_ICE_CONTROLLED,
-      0x932ff9b151263b36ull);
-  stun_msg_add_attr(&msg, &ice_controlled.hdr);
-  
-  stun_attr_string_init(&username_attr, STUN_USERNAME, username,
-      strlen(username));
-  stun_msg_add_attr(&msg, &username_attr.hdr);
-  
-  stun_attr_msgint_init(&msgint);
-  stun_msg_add_attr(&msg, &msgint.hdr);
-  
-  stun_attr_uint32_init(&fingerprint, STUN_FINGERPRINT, 0);
-  stun_msg_add_attr(&msg, &fingerprint.hdr);
-  
-  int rv = stun_msg_encode(&msg, buffer, sizeof(buffer),
-      (uint8_t*)password, strlen(password));
-  ASSERT_EQ(sizeof(buffer), rv);
-  EXPECT_EQ(0, compare_vectors(expected_result, buffer, rv));
+
+  ASSERT_EQ(sizeof(expected_result), sizeof(buffer));
+  ASSERT_EQ(1, stun_msg_verify((stun_msg_hdr*)expected_result,
+      sizeof(expected_result)));
+
+  stun_msg_hdr *msg_hdr = (stun_msg_hdr *)buffer;
+  stun_msg_hdr_init(msg_hdr, STUN_BINDING_REQUEST, tsx_id);  
+  stun_attr_varsize_add(msg_hdr, STUN_SOFTWARE, (uint8_t*)software_name,
+        sizeof(software_name)-1, ' ');
+  stun_attr_uint32_add(msg_hdr, STUN_PRIORITY, 0x6e0001fful);
+  stun_attr_uint64_add(msg_hdr, STUN_ICE_CONTROLLED, 0x932ff9b151263b36ull);
+  stun_attr_varsize_add(msg_hdr, STUN_USERNAME, (uint8_t*)username,
+        sizeof(username)-1, ' ');
+  stun_attr_msgint_add(msg_hdr, (uint8_t*)password, sizeof(password)-1);
+  stun_attr_fingerprint_add(msg_hdr);
+
+  EXPECT_TRUE(IsEqual(expected_result, buffer,
+      sizeof(expected_result)));
 }
 
-TEST(StunMsg, RFC5769SampleIPv4Response) {
+TEST(StunMsgEncode, RFC5769SampleIPv4Response) {
   const char software_name[] = "test vector";
   const char password[] = "VOkJxbRl1RmTxUk/WvJxBt";
+
   const uint8_t expected_result[] = {
     0x01,0x01,0x00,0x3c, //    Request type and message length
     0x21,0x12,0xa4,0x42, //    Magic cookie
@@ -177,50 +186,45 @@ TEST(StunMsg, RFC5769SampleIPv4Response) {
     0x80,0x28,0x00,0x04, //    FINGERPRINT attribute header
     0xc0,0x7d,0x4c,0x96, //    CRC32 fingerprint
   };
-  uint8_t buffer[sizeof(expected_result)];
-  stun_msg msg;
+
+  uint8_t buffer[sizeof(stun_msg_hdr)
+    + STUN_ATTR_VARSIZE_SIZE(sizeof(software_name)-1)
+    + STUN_ATTR_SOCKADDR_SIZE(STUN_IPV4)
+    + STUN_ATTR_MSGINT_SIZE
+    + STUN_ATTR_UINT32_SIZE];
+
+  stun_msg_hdr *msg_hdr = (stun_msg_hdr *)buffer;
   uint8_t tsx_id[12] = {
     0xb7,0xe7,0xa7,0x01,
     0xbc,0x34,0xd6,0x86,
     0xfa,0x87,0xdf,0xae
   };
-  
-  stun_attr_string software;
-  stun_attr_sockaddr xor_mapped_address;
-  stun_attr_msgint msgint;
-  stun_attr_uint32 fingerprint;
-  
-  stun_set_padding_byte((uint8_t)' ');
-  
-  stun_msg_init(&msg, STUN_BINDING_RESPONSE, tsx_id);
-  
-  stun_attr_string_init(&software, STUN_SOFTWARE, software_name,
-      strlen(software_name));
-  stun_msg_add_attr(&msg, &software.hdr);
-  
+
   sockaddr_in ipv4;
   ipv4.sin_family = AF_INET;
   ipv4.sin_port = htons(32853);
   inet_pton(AF_INET, "192.0.2.1", &ipv4.sin_addr);
-  stun_attr_sockaddr_init(&xor_mapped_address, STUN_XOR_MAPPED_ADDRESS,
-      (sockaddr *)&ipv4);
-  stun_msg_add_attr(&msg, &xor_mapped_address.hdr);
-  
-  stun_attr_msgint_init(&msgint);
-  stun_msg_add_attr(&msg, &msgint.hdr);
-  
-  stun_attr_uint32_init(&fingerprint, STUN_FINGERPRINT, 0);
-  stun_msg_add_attr(&msg, &fingerprint.hdr);
 
-  int rv = stun_msg_encode(&msg, buffer, sizeof(buffer),
-      (uint8_t*)password, strlen(password));
-  ASSERT_EQ(sizeof(expected_result), rv);
-  EXPECT_EQ(0, compare_vectors(expected_result, buffer, rv));
+  ASSERT_EQ(sizeof(expected_result), sizeof(buffer));
+  ASSERT_EQ(1, stun_msg_verify((stun_msg_hdr*)expected_result,
+      sizeof(expected_result)));
+
+  stun_msg_hdr_init(msg_hdr, STUN_BINDING_RESPONSE, tsx_id);
+  stun_attr_varsize_add(msg_hdr, STUN_SOFTWARE, (uint8_t*)software_name,
+      sizeof(software_name)-1, ' ');
+  stun_attr_xor_sockaddr_add(msg_hdr, STUN_XOR_MAPPED_ADDRESS,
+      (sockaddr*)&ipv4);
+  stun_attr_msgint_add(msg_hdr, (uint8_t*)password, sizeof(password)-1);
+  stun_attr_fingerprint_add(msg_hdr);
+
+  EXPECT_TRUE(IsEqual(expected_result, buffer,
+      sizeof(expected_result)));
 }
 
-TEST(StunMsg, RFC5769SampleIPv6Response) {
+TEST(StunMsgEncode, RFC5769SampleIPv6Response) {
   const char software_name[] = "test vector";
   const char password[] = "VOkJxbRl1RmTxUk/WvJxBt";
+
   const uint8_t expected_result[] = {
     0x01,0x01,0x00,0x48, //    Request type and message length
     0x21,0x12,0xa4,0x42, //    Magic cookie
@@ -246,48 +250,42 @@ TEST(StunMsg, RFC5769SampleIPv6Response) {
     0x80,0x28,0x00,0x04, //    FINGERPRINT attribute header
     0xc8,0xfb,0x0b,0x4c, //    CRC32 fingerprint
   };
-  uint8_t buffer[sizeof(expected_result)];
-  stun_msg msg;
+
+  uint8_t buffer[sizeof(stun_msg_hdr)
+    + STUN_ATTR_VARSIZE_SIZE(sizeof(software_name)-1)
+    + STUN_ATTR_SOCKADDR_SIZE(STUN_IPV6)
+    + STUN_ATTR_MSGINT_SIZE
+    + STUN_ATTR_UINT32_SIZE];
+
+  stun_msg_hdr *msg_hdr = (stun_msg_hdr *)buffer;
   uint8_t tsx_id[12] = {
     0xb7,0xe7,0xa7,0x01,
     0xbc,0x34,0xd6,0x86,
     0xfa,0x87,0xdf,0xae
   };
-  
-  stun_attr_string software;
-  stun_attr_sockaddr xor_mapped_address;
-  stun_attr_msgint msgint;
-  stun_attr_uint32 fingerprint;
-  
-  stun_set_padding_byte((uint8_t)' ');
-  
-  stun_msg_init(&msg, STUN_BINDING_RESPONSE, tsx_id);
-  
-  stun_attr_string_init(&software, STUN_SOFTWARE, software_name,
-      strlen(software_name));
-  stun_msg_add_attr(&msg, &software.hdr);
-  
+
   sockaddr_in6 ipv6;
   ipv6.sin6_family = AF_INET6;
   ipv6.sin6_port = htons(32853);
   inet_pton(AF_INET6, "2001:db8:1234:5678:11:2233:4455:6677", &ipv6.sin6_addr);
-  stun_attr_sockaddr_init(&xor_mapped_address, STUN_XOR_MAPPED_ADDRESS,
-      (sockaddr *)&ipv6);
-  stun_msg_add_attr(&msg, &xor_mapped_address.hdr);
-  
-  stun_attr_msgint_init(&msgint);
-  stun_msg_add_attr(&msg, &msgint.hdr);
-  
-  stun_attr_uint32_init(&fingerprint, STUN_FINGERPRINT, 0);
-  stun_msg_add_attr(&msg, &fingerprint.hdr);
 
-  int rv = stun_msg_encode(&msg, buffer, sizeof(buffer),
-      (uint8_t*)password, strlen(password));
-  ASSERT_EQ(sizeof(expected_result), rv);
-  EXPECT_EQ(0, compare_vectors(expected_result, buffer, rv));
+  ASSERT_EQ(sizeof(expected_result), sizeof(buffer));
+  ASSERT_EQ(1, stun_msg_verify((stun_msg_hdr*)expected_result,
+      sizeof(expected_result)));
+  
+  stun_msg_hdr_init(msg_hdr, STUN_BINDING_RESPONSE, tsx_id);
+  stun_attr_varsize_add(msg_hdr, STUN_SOFTWARE, (uint8_t*)software_name,
+      sizeof(software_name)-1, ' ');
+  stun_attr_xor_sockaddr_add(msg_hdr, STUN_XOR_MAPPED_ADDRESS,
+      (sockaddr *)&ipv6);
+  stun_attr_msgint_add(msg_hdr, (uint8_t*)password, sizeof(password)-1);
+  stun_attr_fingerprint_add(msg_hdr);
+
+  EXPECT_TRUE(IsEqual(expected_result, buffer,
+      sizeof(expected_result)));
 }
 
-TEST(StunMsg, RFC5769SampleRequestLongTerm) {
+TEST(StunMsgEncode, RFC5769SampleRequestLongTerm) {
   const char username[] =
     "\xE3\x83\x9E\xE3"
     "\x83\x88\xE3\x83"
@@ -297,6 +295,7 @@ TEST(StunMsg, RFC5769SampleRequestLongTerm) {
   const char password[] = "TheMatrIX";
   const char nonce[] = "f//499k954d6OL34oL9FSTvy64sA";
   const char realm[] = "example.org";
+
   const uint8_t expected_result[] = {
     0x00,0x01,0x00,0x60, //    Request type and message length
     0x21,0x12,0xa4,0x42, //    Magic cookie
@@ -328,40 +327,36 @@ TEST(StunMsg, RFC5769SampleRequestLongTerm) {
     0x2e,0x85,0xc9,0xa2, // }
     0x8c,0xa8,0x96,0x66, // }
   };
-  uint8_t buffer[sizeof(expected_result)];
-  stun_msg msg;
+
+  uint8_t buffer[sizeof(stun_msg_hdr)
+    + STUN_ATTR_VARSIZE_SIZE(sizeof(username)-1)
+    + STUN_ATTR_VARSIZE_SIZE(sizeof(nonce)-1)
+    + STUN_ATTR_VARSIZE_SIZE(sizeof(realm)-1)
+    + STUN_ATTR_MSGINT_SIZE];
+
+  stun_msg_hdr *msg_hdr = (stun_msg_hdr *)buffer;
   uint8_t tsx_id[12] = {
     0x78,0xad,0x34,0x33,
     0xc6,0xad,0x72,0xc0,
     0x29,0xda,0x41,0x2e,
   };
-  
-  stun_attr_string username_attr;
-  stun_attr_string nonce_attr;
-  stun_attr_string realm_attr;
-  stun_attr_msgint msgint;
-  
-  stun_set_padding_byte(0);
-  
-  stun_msg_init(&msg, STUN_BINDING_REQUEST, tsx_id);
-  
-  stun_attr_string_init(&username_attr, STUN_USERNAME, username,
-      strlen(username));
-  stun_msg_add_attr(&msg, &username_attr.hdr);
 
-  stun_attr_string_init(&nonce_attr, STUN_NONCE, nonce,
-      strlen(nonce));
-  stun_msg_add_attr(&msg, &nonce_attr.hdr);
+  uint8_t key[16];
+  stun_key(username, realm, password, key);
 
-  stun_attr_string_init(&realm_attr, STUN_REALM, realm,
-      strlen(realm));
-  stun_msg_add_attr(&msg, &realm_attr.hdr);
+  ASSERT_EQ(sizeof(expected_result), sizeof(buffer));
+  ASSERT_EQ(1, stun_msg_verify((stun_msg_hdr*)expected_result,
+      sizeof(expected_result)));
   
-  stun_attr_msgint_init(&msgint);
-  stun_msg_add_attr(&msg, &msgint.hdr);
-  
-  int rv = stun_msg_encode(&msg, buffer, sizeof(buffer),
-      (uint8_t*)password, strlen(password));
-  ASSERT_EQ(sizeof(expected_result), rv);
-  EXPECT_EQ(0, compare_vectors(expected_result, buffer, rv));
+  stun_msg_hdr_init(msg_hdr, STUN_BINDING_REQUEST, tsx_id);
+  stun_attr_varsize_add(msg_hdr, STUN_USERNAME, (uint8_t*)username,
+      sizeof(username)-1, 0);
+  stun_attr_varsize_add(msg_hdr, STUN_NONCE, (uint8_t*)nonce,
+      sizeof(nonce)-1, 0);
+  stun_attr_varsize_add(msg_hdr, STUN_REALM, (uint8_t*)realm,
+      sizeof(realm)-1, 0);
+  stun_attr_msgint_add(msg_hdr, key, sizeof(key));
+
+  EXPECT_TRUE(IsEqual(expected_result, buffer,
+      sizeof(expected_result)));
 }
