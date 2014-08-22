@@ -8,10 +8,13 @@
  */
 
 #include <stun/msg.h>
+
 #include "sha1.h"
 #include "hmac_sha1.h"
 #include "crc32.h"
 #include "md5.h"
+
+#include <memory.h>
 
 /* Include these for sockaddr_in and sockaddr_in6 */
 #ifdef _WIN32
