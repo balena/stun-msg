@@ -222,10 +222,12 @@ void stun_attr_errcode_init(struct stun_attr_errcode *attr, int err_code,
 void stun_attr_unknown_init(struct stun_attr_unknown *attr,
                             const uint16_t *unknown_codes, size_t count,
                             uint8_t pad) {
+  size_t i;
   uint8_t *p = (uint8_t *)attr;
   uint16_t attr_len = (uint16_t)(count << 1);
   stun_attr_hdr_init(&attr->hdr, STUN_UNKNOWN_ATTRIBUTES, attr_len);
-  memcpy(attr->attrs, unknown_codes, count << 1);
+  for (i = 0; i < count; i++)
+    attr->attrs[i] = htons(unknown_codes[i]);
   store_padding(p + sizeof(attr->hdr) + attr_len, attr_len, pad);
 }
 
@@ -475,6 +477,17 @@ const char *stun_attr_errcode_reason(const struct stun_attr_errcode *attr) {
 
 size_t stun_attr_errcode_reason_len(const struct stun_attr_errcode *attr) {
   return stun_attr_len(&attr->hdr) - sizeof(struct stun_attr_hdr);
+}
+
+size_t stun_attr_unknown_count(const struct stun_attr_unknown *attr) {
+  return ntohs(attr->hdr.length) >> 1;
+}
+
+uint16_t stun_attr_unknown_get(const struct stun_attr_unknown *attr,
+                               size_t n) {
+  if (n >= stun_attr_unknown_count(attr))
+    return 0;
+  return ntohs(attr->attrs[n]);
 }
 
 uint16_t *stun_attr_unknown_next(const struct stun_attr_unknown *attr,

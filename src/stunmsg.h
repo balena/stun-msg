@@ -423,11 +423,14 @@ const char *stun_attr_errcode_reason(const struct stun_attr_errcode *attr);
 /* Gets the reason phrase length from the ERROR-CODE attribute */
 size_t stun_attr_errcode_reason_len(const struct stun_attr_errcode *attr);
 
-/* Enumerates the unknown attributes. Passing unk_it as NULL
- * starts the iteration.
+/* Gets the number of unknown attributes contained in a UNKNOWN-ATTRIBUTES
+ * attribute.
  */
-uint16_t *stun_attr_unknown_next(const struct stun_attr_unknown *attr,
-                                 uint16_t *unk_it);
+size_t stun_attr_unknown_count(const struct stun_attr_unknown *attr);
+
+/* Gets the nth occurrence of unknown attributes.
+ */
+uint16_t stun_attr_unknown_get(const struct stun_attr_unknown *attr, size_t n);
 
 /* Calculates the key used for long term credentials for using with the
  * MESSAGE-INTEGRITY attribute; MD5(user:realm:pass).
