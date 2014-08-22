@@ -25,6 +25,8 @@
 #endif
 
 
+#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
+
 namespace {
 
 void PrintWord(const uint8_t *v, size_t size, std::ostream &out) {
@@ -545,7 +547,7 @@ TEST(StunMsgEncode, ErrorResponse) {
 
   stun_msg_hdr_init(msg_hdr, STUN_BINDING_ERROR_RESPONSE, tsx_id);
   stun_attr_errcode_add(msg_hdr, 420, reason_phrase, 0);
-  stun_attr_unknown_add(msg_hdr, unknown, ARRAYSIZE(unknown), 0);
+  stun_attr_unknown_add(msg_hdr, unknown, ARRAY_SIZE(unknown), 0);
 
   EXPECT_TRUE(IsEqual(expected_result, buffer,
       sizeof(expected_result)));
@@ -568,8 +570,8 @@ TEST(StunMsgEncode, ErrorResponse) {
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
   EXPECT_EQ(STUN_UNKNOWN_ATTRIBUTES, stun_attr_type(attr_hdr));
   stun_attr_unknown *attr_unk = (stun_attr_unknown *)attr_hdr;
-  ASSERT_EQ(ARRAYSIZE(unknown), stun_attr_unknown_count(attr_unk));
-  for (size_t i = 0; i < ARRAYSIZE(unknown); i++) {
+  ASSERT_EQ(ARRAY_SIZE(unknown), stun_attr_unknown_count(attr_unk));
+  for (size_t i = 0; i < ARRAY_SIZE(unknown); i++) {
     EXPECT_EQ(unknown[i], stun_attr_unknown_get(attr_unk, i));
   }
 
