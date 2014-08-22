@@ -196,6 +196,20 @@ void stun_attr_varsize_init(struct stun_attr_varsize *attr, uint16_t type,
   store_padding(p + sizeof(attr->hdr) + buf_size, buf_size, pad);
 }
 
+void stun_attr_uint8_init(struct stun_attr_uint8 *attr, uint16_t type,
+                          uint8_t value) {
+  stun_attr_hdr_init(&attr->hdr, type, sizeof(attr->value));
+  attr->value = value;
+  memset(attr->unused, 0, sizeof(attr->unused));
+}
+
+void stun_attr_uint16_init(struct stun_attr_uint16 *attr, uint16_t type,
+                           uint16_t value) {
+  stun_attr_hdr_init(&attr->hdr, type, sizeof(attr->value));
+  attr->value = htons(value);
+  attr->unused = 0;
+}
+
 void stun_attr_uint32_init(struct stun_attr_uint32 *attr, uint16_t type,
                            uint32_t value) {
   stun_attr_hdr_init(&attr->hdr, type, sizeof(attr->value));
@@ -293,6 +307,22 @@ void stun_attr_varsize_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
   struct stun_attr_varsize *attr =
       (struct stun_attr_varsize *)stun_msg_end(msg_hdr);
   stun_attr_varsize_init(attr, type, buf, buf_size, pad);
+  stun_msg_add_attr(msg_hdr, &attr->hdr);
+}
+
+void stun_attr_uint8_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
+                         uint8_t value) {
+  struct stun_attr_uint8 *attr =
+      (struct stun_attr_uint8 *)stun_msg_end(msg_hdr);
+  stun_attr_uint8_init(attr, type, value);
+  stun_msg_add_attr(msg_hdr, &attr->hdr);
+}
+
+void stun_attr_uint16_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
+                          uint16_t value) {
+  struct stun_attr_uint16 *attr =
+      (struct stun_attr_uint16 *)stun_msg_end(msg_hdr);
+  stun_attr_uint16_init(attr, type, value);
   stun_msg_add_attr(msg_hdr, &attr->hdr);
 }
 
@@ -480,6 +510,14 @@ int stun_attr_xor_sockaddr_read(const struct stun_attr_sockaddr *attr,
 
 const uint8_t *stun_attr_varsize_read(const struct stun_attr_varsize *attr) {
   return attr->value;
+}
+
+uint8_t stun_attr_uint8_read(const struct stun_attr_uint8 *attr) {
+  return attr->value;
+}
+
+uint16_t stun_attr_uint16_read(const struct stun_attr_uint16 *attr) {
+  return ntohs(attr->value);
 }
 
 uint32_t stun_attr_uint32_read(const struct stun_attr_uint32 *attr) {

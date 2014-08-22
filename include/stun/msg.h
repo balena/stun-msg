@@ -180,6 +180,18 @@ struct stun_attr_varsize {
   uint8_t value[1];                            /* variable size value */
 };
 
+struct stun_attr_uint8 {
+  struct stun_attr_hdr hdr;
+  uint8_t value;                               /* single 8-bit value */
+  uint8_t unused[3];
+};
+
+struct stun_attr_uint16 {
+  struct stun_attr_hdr hdr;
+  uint16_t value;                              /* single 16-bit value */
+  uint16_t unused;
+};
+
 struct stun_attr_uint32 {
   struct stun_attr_hdr hdr;
   uint32_t value;                              /* single 32-bit value */
@@ -292,6 +304,14 @@ int stun_attr_xor_sockaddr_init(struct stun_attr_sockaddr *sockaddr_attr,
 void stun_attr_varsize_init(struct stun_attr_varsize *attr, uint16_t type,
                             const uint8_t *buf, size_t buf_size, uint8_t pad);
 
+/* Initializes an 8-bit attribute */
+void stun_attr_uint8_init(struct stun_attr_uint8 *attr, uint16_t type,
+                          uint8_t value);
+
+/* Initializes a 16-bit attribute */
+void stun_attr_uint16_init(struct stun_attr_uint16 *attr, uint16_t type,
+                           uint16_t value);
+
 /* Initializes a 32-bit attribute */
 void stun_attr_uint32_init(struct stun_attr_uint32 *attr, uint16_t type,
                            uint32_t value);
@@ -348,6 +368,14 @@ int stun_attr_xor_sockaddr_add(struct stun_msg_hdr *msg_hdr,
 /* Adds a varsize attribute to the message end */
 void stun_attr_varsize_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
                            const uint8_t *buf, size_t buf_size, uint8_t pad);
+
+/* Adds an 8-bit attribute to the message end */
+void stun_attr_uint8_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
+                         uint8_t value);
+
+/* Adds a 16-bit attribute to the message end */
+void stun_attr_uint16_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
+                          uint16_t value);
 
 /* Adds a 32-bit attribute to the message end */
 void stun_attr_uint32_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
@@ -416,6 +444,12 @@ int stun_attr_xor_sockaddr_read(const struct stun_attr_sockaddr *attr,
 
 /* Reads a varsize attribute. The length is returned by stun_attr_len */
 const uint8_t *stun_attr_varsize_read(const struct stun_attr_varsize *attr);
+
+/* Reads an 8-bit attribute */
+uint8_t stun_attr_uint8_read(const struct stun_attr_uint8 *attr);
+
+/* Reads a 16-bit attribute */
+uint16_t stun_attr_uint16_read(const struct stun_attr_uint16 *attr);
 
 /* Reads a 32-bit attribute */
 uint32_t stun_attr_uint32_read(const struct stun_attr_uint32 *attr);
