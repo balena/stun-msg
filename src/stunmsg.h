@@ -441,6 +441,12 @@ size_t stun_attr_unknown_count(const struct stun_attr_unknown *attr);
  */
 uint16_t stun_attr_unknown_get(const struct stun_attr_unknown *attr, size_t n);
 
+/* Checks the MESSAGE-INTEGRITY attribute.
+ */
+int stun_attr_msgint_check(struct stun_attr_msgint *msgint,
+                           struct stun_msg_hdr *msg_hdr,
+                           const uint8_t *key, size_t key_len);
+
 /* Calculates the key used for long term credentials for using with the
  * MESSAGE-INTEGRITY attribute; MD5(user:realm:pass).
  */

@@ -199,6 +199,8 @@ TEST(StunMsgEncode, RFC5769SampleRequest) {
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
   EXPECT_EQ(STUN_MESSAGE_INTEGRITY, stun_attr_type(attr_hdr));
+  EXPECT_EQ(1, stun_attr_msgint_check((stun_attr_msgint*)attr_hdr, msg_hdr,
+      (uint8_t*)password, sizeof(password)-1));
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
   EXPECT_EQ(STUN_FINGERPRINT, stun_attr_type(attr_hdr));
@@ -291,6 +293,8 @@ TEST(StunMsgEncode, RFC5769SampleIPv4Response) {
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
   EXPECT_EQ(STUN_MESSAGE_INTEGRITY, stun_attr_type(attr_hdr));
+  EXPECT_EQ(1, stun_attr_msgint_check((stun_attr_msgint*)attr_hdr, msg_hdr,
+      (uint8_t*)password, sizeof(password)-1));
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
   EXPECT_EQ(STUN_FINGERPRINT, stun_attr_type(attr_hdr));
@@ -386,6 +390,8 @@ TEST(StunMsgEncode, RFC5769SampleIPv6Response) {
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
   EXPECT_EQ(STUN_MESSAGE_INTEGRITY, stun_attr_type(attr_hdr));
+  EXPECT_EQ(1, stun_attr_msgint_check((stun_attr_msgint*)attr_hdr, msg_hdr,
+      (uint8_t*)password, sizeof(password)-1));
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
   EXPECT_EQ(STUN_FINGERPRINT, stun_attr_type(attr_hdr));
@@ -494,6 +500,8 @@ TEST(StunMsgEncode, RFC5769SampleRequestLongTerm) {
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
   EXPECT_EQ(STUN_MESSAGE_INTEGRITY, stun_attr_type(attr_hdr));
+  EXPECT_EQ(1, stun_attr_msgint_check((stun_attr_msgint*)attr_hdr, msg_hdr,
+      key, sizeof(key)));
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
   EXPECT_EQ(NULL, attr_hdr);
