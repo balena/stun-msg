@@ -135,11 +135,11 @@ int stun_attr_sockaddr_init(struct stun_attr_sockaddr *attr,
   if (addr->sa_family == AF_INET) {
     struct sockaddr_in *sin = (struct sockaddr_in *) addr;
     stun_attr_hdr_init(&attr->hdr, type,
-        sizeof(attr->__unused)
+        sizeof(attr->unused)
         + sizeof(attr->family)
         + sizeof(attr->port)
         + sizeof(attr->addr.v4));
-    attr->__unused = 0;
+    attr->unused = 0;
     attr->family = STUN_IPV4;
     attr->port = sin->sin_port;
     memcpy(&attr->addr.v4, &sin->sin_addr, sizeof(sin->sin_addr));
@@ -147,11 +147,11 @@ int stun_attr_sockaddr_init(struct stun_attr_sockaddr *attr,
   } else if (addr->sa_family == AF_INET6) {
     struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *) addr;
     stun_attr_hdr_init(&attr->hdr, type,
-        sizeof(attr->__unused)
+        sizeof(attr->unused)
         + sizeof(attr->family)
         + sizeof(attr->port)
         + sizeof(attr->addr.v6));
-    attr->__unused = 0;
+    attr->unused = 0;
     attr->family = STUN_IPV6;
     attr->port = sin6->sin6_port;
     memcpy(&attr->addr.v6, &sin6->sin6_addr, sizeof(sin6->sin6_addr));
@@ -170,7 +170,7 @@ int stun_attr_xor_sockaddr_init(struct stun_attr_sockaddr *attr,
   if (status != STUN_OK)
     return status;
   /* advance to the port */
-  p = begin + sizeof(attr->hdr) + sizeof(attr->__unused)
+  p = begin + sizeof(attr->hdr) + sizeof(attr->unused)
     + sizeof(attr->family);
   *(uint16_t *)p ^= htons((uint16_t)(STUN_MAGIC_COOKIE >> 16));
   p += sizeof(attr->port); /* advance the port */
@@ -212,10 +212,10 @@ void stun_attr_errcode_init(struct stun_attr_errcode *attr, int err_code,
                             const char *err_reason, uint8_t pad) {
   int reason_len = strlen(err_reason);
   uint8_t *p = (uint8_t *)attr;
-  uint16_t attr_len = (uint16_t)(sizeof(attr->__unused)
+  uint16_t attr_len = (uint16_t)(sizeof(attr->unused)
       + sizeof(attr->err_class) + sizeof(attr->err_code) + reason_len);
   stun_attr_hdr_init(&attr->hdr, STUN_ERROR_CODE, attr_len);
-  attr->__unused = 0;
+  attr->unused = 0;
   attr->err_class = (uint8_t)(err_code / 100);
   attr->err_code = err_code % 100;
   memcpy(attr->err_reason, err_reason, reason_len);
