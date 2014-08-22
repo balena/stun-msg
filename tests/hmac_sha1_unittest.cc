@@ -74,10 +74,13 @@ TEST(HmacSha1Hash, TestVectors) {
       "D730594D 167E35D5 956FD800 3D0DB3D3 F46DC7BB" },
   };
 
+  HMAC_SHA1_CTX ctx;
   uint8_t digest[20];
+
   for (int k = 0; k < sizeof(test)/sizeof(test[0]); k++){
-    hmac_sha1((uint8_t*)test[k].data, test[k].data_len,
-        (uint8_t*)test[k].key, test[k].key_len, digest);
+    HMAC_SHA1_Init(&ctx, (uint8_t*)test[k].key, test[k].key_len);
+    HMAC_SHA1_Update(&ctx, (uint8_t*)test[k].data, test[k].data_len);
+    HMAC_SHA1_Final(digest, &ctx);
     EXPECT_TRUE(IsEqual(test[k].test_data, digest, test[k].digest));
   }
 }

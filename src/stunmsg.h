@@ -334,6 +334,9 @@ void stun_attr_fingerprint_init(struct stun_attr_uint32 *attr,
 void stun_msg_add_attr(struct stun_msg_hdr *msg_hdr,
                        const struct stun_attr_hdr *attr);
 
+/* Adds an empty attribute to the message end */
+void stun_attr_empty_add(struct stun_msg_hdr *msg_hdr, uint16_t type);
+
 /* Adds a sockaddr attribute to the message end */
 int stun_attr_sockaddr_add(struct stun_msg_hdr *msg_hdr,
                            uint16_t type, const struct sockaddr *addr);
@@ -391,6 +394,12 @@ uint16_t stun_attr_type(const struct stun_attr_hdr *attr_hdr);
  */
 struct stun_attr_hdr *stun_msg_next_attr(struct stun_msg_hdr *msg_hdr,
                                          struct stun_attr_hdr *attr_hdr);
+
+/* Finds a specific STUN attribute in the provided message. It will perform
+ * a linear search over the available attributes.
+ */
+struct stun_attr_hdr *stun_msg_find_attr(struct stun_msg_hdr *msg_hdr,
+                                         uint16_t type);
 
 /* Reads a sockaddr attribute. Returns error case the address family
  * is unknown (should be STUN_IPV4 or STUN_IPV6).

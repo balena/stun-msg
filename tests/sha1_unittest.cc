@@ -64,16 +64,16 @@ TEST(Sha1Hash, TestVectors) {
     "34AA973C D4C4DAA4 F61EEB2B DBAD2731 6534016F"};
 
   for (int k = 0; k < 2; k++){
-    SHA1Init(&context);
-    SHA1Update(&context, (uint8_t*)test_data[k], strlen(test_data[k]));
-    SHA1Final(digest, &context);
+    SHA1_Init(&context);
+    SHA1_Update(&context, (uint8_t*)test_data[k], strlen(test_data[k]));
+    SHA1_Final(digest, &context);
     EXPECT_TRUE(IsEqual(test_data[k], digest, test_results[k]));
   }
 
   // million 'a' vector we feed separately
-  SHA1Init(&context);
+  SHA1_Init(&context);
   for (int k = 0; k < 1000000; k++)
-    SHA1Update(&context, (uint8_t*)"a", 1);
-  SHA1Final(digest, &context);
+    SHA1_Update(&context, (uint8_t*)"a", 1);
+  SHA1_Final(digest, &context);
   EXPECT_TRUE(IsEqual(test_data[2], digest, test_results[2]));
 }

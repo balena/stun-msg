@@ -236,7 +236,10 @@ void stun_attr_msgint_init(struct stun_attr_msgint *attr,
                            const uint8_t *key, size_t key_len) {
   uint8_t *p = (uint8_t *)msg_hdr;
   uint8_t *p_end = p + stun_msg_len(msg_hdr) - sizeof(*attr);
-  hmac_sha1(p, p_end - p, key, key_len, attr->hmac);
+  HMAC_SHA1_CTX ctx;
+  HMAC_SHA1_Init(&ctx, key, key_len);
+  HMAC_SHA1_Update(&ctx, p, p_end - p);
+  HMAC_SHA1_Final(attr->hmac, &ctx);
 }
 
 void stun_attr_fingerprint_init(struct stun_attr_uint32 *attr,
@@ -251,6 +254,13 @@ void stun_msg_add_attr(struct stun_msg_hdr *msg_hdr,
                        const struct stun_attr_hdr *attr_hdr) {
   size_t attr_len = stun_attr_block_len(attr_hdr);
   msg_hdr->length = htons(ntohs(msg_hdr->length) + (uint16_t)attr_len);
+}
+
+void stun_attr_empty_add(struct stun_msg_hdr *msg_hdr, uint16_t type) {
+  struct stun_attr_hdr *attr =
+      (struct stun_attr_hdr *)stun_msg_end(msg_hdr);
+  stun_attr_hdr_init(attr, type, 0);
+  stun_msg_add_attr(msg_hdr, attr);
 }
 
 int stun_attr_sockaddr_add(struct stun_msg_hdr *msg_hdr,
@@ -405,6 +415,16 @@ struct stun_attr_hdr *stun_msg_next_attr(struct stun_msg_hdr *msg_hdr,
   if (p >= p_end)
     return NULL;
   return (struct stun_attr_hdr *)p;
+}
+
+struct stun_attr_hdr *stun_msg_find_attr(struct stun_msg_hdr *msg_hdr,
+                                         uint16_t type) {
+  struct stun_attr_hdr *it = NULL;
+  while ((it = stun_msg_next_attr(msg_hdr, it)) != NULL) {
+    if (stun_attr_type(it) == type)
+      break;
+  }
+  return it;
 }
 
 int stun_attr_sockaddr_read(const struct stun_attr_sockaddr *attr,
