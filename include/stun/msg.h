@@ -166,7 +166,7 @@ struct stun_attr_hdr {
 
 struct stun_attr_sockaddr {
   struct stun_attr_hdr hdr;
-  uint8_t __unused;
+  uint8_t unused;
   uint8_t family;                              /* IPv4 = 1, IPv6 = 2 */
   uint16_t port;
   union {
@@ -211,7 +211,7 @@ struct stun_attr_msgint {
 
 struct stun_attr_errcode {
   struct stun_attr_hdr hdr;
-  uint16_t __unused;
+  uint16_t unused;
   uint8_t err_class;                           /* code / 100 */
   uint8_t err_code;                            /* code % 100 */
   char err_reason[1];
