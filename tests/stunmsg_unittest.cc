@@ -7,9 +7,8 @@
  * present and future rights to this software under copyright law.
  */
 
-#include <stun.h>
-#include <md5.h>
 #include <sstream>
+#include <stunmsg.h>
 #include <gtest/gtest.h>
 
 /* Include these for sockaddr_in and sockaddr_in6 */
@@ -24,6 +23,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #endif
+
+
+namespace {
 
 void PrintWord(const uint8_t *v, size_t size, std::ostream &out) {
   size_t i;
@@ -64,6 +66,8 @@ void PrintWord(const uint8_t *v, size_t size, std::ostream &out) {
         << out.str();
 }
 
+} // empty namespace
+
 TEST(StunMsgEncode, BasicBindingRequest) {
   const uint8_t expected_result[] = {
     0x00,0x01,0x00,0x00, //    Request type and message length
@@ -90,6 +94,14 @@ TEST(StunMsgEncode, BasicBindingRequest) {
 
   EXPECT_TRUE(IsEqual(expected_result, buffer,
       sizeof(expected_result)));
+
+  // Now decoding
+  msg_hdr = (stun_msg_hdr *)expected_result;
+  EXPECT_EQ(STUN_BINDING_REQUEST, stun_msg_type(msg_hdr));
+  EXPECT_EQ(sizeof(stun_msg_hdr), stun_msg_len(msg_hdr));
+
+  stun_attr_hdr *attr_hdr = stun_msg_next_attr(msg_hdr, NULL);
+  EXPECT_EQ(NULL, attr_hdr);
 }
 
 TEST(StunMsgEncode, RFC5769SampleRequest) {
@@ -158,6 +170,41 @@ TEST(StunMsgEncode, RFC5769SampleRequest) {
 
   EXPECT_TRUE(IsEqual(expected_result, buffer,
       sizeof(expected_result)));
+
+  // Now decoding
+  msg_hdr = (stun_msg_hdr *)expected_result;
+  EXPECT_EQ(STUN_BINDING_REQUEST, stun_msg_type(msg_hdr));
+  EXPECT_EQ(sizeof(expected_result), stun_msg_len(msg_hdr));
+
+  stun_attr_hdr *attr_hdr = stun_msg_next_attr(msg_hdr, NULL);
+  EXPECT_EQ(STUN_SOFTWARE, stun_attr_type(attr_hdr));
+  ASSERT_EQ(sizeof(software_name)-1, stun_attr_len(attr_hdr));
+  const uint8_t* data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
+  EXPECT_TRUE(IsEqual(data, (uint8_t*)software_name, sizeof(software_name)-1));
+
+  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
+  EXPECT_EQ(STUN_PRIORITY, stun_attr_type(attr_hdr));
+  EXPECT_EQ(0x6e0001fful, stun_attr_uint32_read((stun_attr_uint32*)attr_hdr));
+
+  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
+  EXPECT_EQ(STUN_ICE_CONTROLLED, stun_attr_type(attr_hdr));
+  EXPECT_EQ(0x932ff9b151263b36ull,
+      stun_attr_uint64_read((stun_attr_uint64*)attr_hdr));
+
+  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
+  EXPECT_EQ(STUN_USERNAME, stun_attr_type(attr_hdr));
+  ASSERT_EQ(sizeof(username)-1, stun_attr_len(attr_hdr));
+  data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
+  EXPECT_TRUE(IsEqual(data, (uint8_t*)username, sizeof(username)-1));
+
+  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
+  EXPECT_EQ(STUN_MESSAGE_INTEGRITY, stun_attr_type(attr_hdr));
+
+  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
+  EXPECT_EQ(STUN_FINGERPRINT, stun_attr_type(attr_hdr));
+
+  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
+  EXPECT_EQ(NULL, attr_hdr);
 }
 
 TEST(StunMsgEncode, RFC5769SampleIPv4Response) {
@@ -219,6 +266,37 @@ TEST(StunMsgEncode, RFC5769SampleIPv4Response) {
 
   EXPECT_TRUE(IsEqual(expected_result, buffer,
       sizeof(expected_result)));
+
+  // Now decoding
+  msg_hdr = (stun_msg_hdr *)expected_result;
+  EXPECT_EQ(STUN_BINDING_RESPONSE, stun_msg_type(msg_hdr));
+  EXPECT_EQ(sizeof(expected_result), stun_msg_len(msg_hdr));
+
+  stun_attr_hdr *attr_hdr = stun_msg_next_attr(msg_hdr, NULL);
+  EXPECT_EQ(STUN_SOFTWARE, stun_attr_type(attr_hdr));
+  ASSERT_EQ(sizeof(software_name)-1, stun_attr_len(attr_hdr));
+  const uint8_t* data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
+  EXPECT_TRUE(IsEqual(data, (uint8_t*)software_name, sizeof(software_name)-1));
+
+  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
+  EXPECT_EQ(STUN_XOR_MAPPED_ADDRESS, stun_attr_type(attr_hdr));
+  sockaddr_in test_addr;
+  memset(&test_addr, 0, sizeof(test_addr));
+  EXPECT_EQ(STUN_OK, stun_attr_xor_sockaddr_read(
+      (stun_attr_sockaddr*)attr_hdr, msg_hdr, (sockaddr*)&test_addr));
+  EXPECT_EQ(AF_INET, test_addr.sin_family);
+  EXPECT_EQ(htons(32853), test_addr.sin_port);
+  EXPECT_EQ(0, memcmp(&test_addr.sin_addr, &ipv4.sin_addr,
+      sizeof(ipv4.sin_addr)));
+
+  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
+  EXPECT_EQ(STUN_MESSAGE_INTEGRITY, stun_attr_type(attr_hdr));
+
+  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
+  EXPECT_EQ(STUN_FINGERPRINT, stun_attr_type(attr_hdr));
+
+  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
+  EXPECT_EQ(NULL, attr_hdr);
 }
 
 TEST(StunMsgEncode, RFC5769SampleIPv6Response) {
@@ -283,6 +361,37 @@ TEST(StunMsgEncode, RFC5769SampleIPv6Response) {
 
   EXPECT_TRUE(IsEqual(expected_result, buffer,
       sizeof(expected_result)));
+
+  // Now decoding
+  msg_hdr = (stun_msg_hdr *)expected_result;
+  EXPECT_EQ(STUN_BINDING_RESPONSE, stun_msg_type(msg_hdr));
+  EXPECT_EQ(sizeof(expected_result), stun_msg_len(msg_hdr));
+
+  stun_attr_hdr *attr_hdr = stun_msg_next_attr(msg_hdr, NULL);
+  EXPECT_EQ(STUN_SOFTWARE, stun_attr_type(attr_hdr));
+  ASSERT_EQ(sizeof(software_name)-1, stun_attr_len(attr_hdr));
+  const uint8_t* data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
+  EXPECT_TRUE(IsEqual(data, (uint8_t*)software_name, sizeof(software_name)-1));
+
+  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
+  EXPECT_EQ(STUN_XOR_MAPPED_ADDRESS, stun_attr_type(attr_hdr));
+  sockaddr_in6 test_addr;
+  memset(&test_addr, 0, sizeof(test_addr));
+  EXPECT_EQ(STUN_OK, stun_attr_xor_sockaddr_read(
+      (stun_attr_sockaddr*)attr_hdr, msg_hdr, (sockaddr*)&test_addr));
+  EXPECT_EQ(AF_INET6, test_addr.sin6_family);
+  EXPECT_EQ(htons(32853), test_addr.sin6_port);
+  EXPECT_EQ(0, memcmp(&test_addr.sin6_addr, &ipv6.sin6_addr,
+      sizeof(ipv6.sin6_addr)));
+
+  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
+  EXPECT_EQ(STUN_MESSAGE_INTEGRITY, stun_attr_type(attr_hdr));
+
+  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
+  EXPECT_EQ(STUN_FINGERPRINT, stun_attr_type(attr_hdr));
+
+  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
+  EXPECT_EQ(NULL, attr_hdr);
 }
 
 TEST(StunMsgEncode, RFC5769SampleRequestLongTerm) {
@@ -359,4 +468,33 @@ TEST(StunMsgEncode, RFC5769SampleRequestLongTerm) {
 
   EXPECT_TRUE(IsEqual(expected_result, buffer,
       sizeof(expected_result)));
+
+  // Now decoding
+  msg_hdr = (stun_msg_hdr *)expected_result;
+  EXPECT_EQ(STUN_BINDING_REQUEST, stun_msg_type(msg_hdr));
+  EXPECT_EQ(sizeof(expected_result), stun_msg_len(msg_hdr));
+
+  stun_attr_hdr *attr_hdr = stun_msg_next_attr(msg_hdr, NULL);
+  EXPECT_EQ(STUN_USERNAME, stun_attr_type(attr_hdr));
+  ASSERT_EQ(sizeof(username)-1, stun_attr_len(attr_hdr));
+  const uint8_t* data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
+  EXPECT_TRUE(IsEqual(data, (uint8_t*)username, sizeof(username)-1));
+
+  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
+  EXPECT_EQ(STUN_NONCE, stun_attr_type(attr_hdr));
+  ASSERT_EQ(sizeof(nonce)-1, stun_attr_len(attr_hdr));
+  data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
+  EXPECT_TRUE(IsEqual(data, (uint8_t*)nonce, sizeof(nonce)-1));
+
+  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
+  EXPECT_EQ(STUN_REALM, stun_attr_type(attr_hdr));
+  ASSERT_EQ(sizeof(realm)-1, stun_attr_len(attr_hdr));
+  data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
+  EXPECT_TRUE(IsEqual(data, (uint8_t*)realm, sizeof(realm)-1));
+
+  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
+  EXPECT_EQ(STUN_MESSAGE_INTEGRITY, stun_attr_type(attr_hdr));
+
+  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
+  EXPECT_EQ(NULL, attr_hdr);
 }
