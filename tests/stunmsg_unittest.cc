@@ -8,7 +8,7 @@
  */
 
 #include <sstream>
-#include <stunmsg.h>
+#include <stun/msg.h>
 #include <gtest/gtest.h>
 
 /* Include these for sockaddr_in and sockaddr_in6 */

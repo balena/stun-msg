@@ -7,7 +7,7 @@
  * present and future rights to this software under copyright law.
  */
 
-#include "stunmsg.h"
+#include <stun/msg.h>
 #include "sha1.h"
 #include "hmac_sha1.h"
 #include "crc32.h"
