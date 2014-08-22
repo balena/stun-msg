@@ -19,9 +19,9 @@ typedef struct _SHA1_CTX {
   uint8_t buffer[64];
 } SHA1_CTX;
 
-void SHA1Init(SHA1_CTX *context);
-void SHA1Update(SHA1_CTX *context, const uint8_t *data, uint32_t len);
-void SHA1Final(uint8_t digest[20], SHA1_CTX *context);
+void SHA1_Init(SHA1_CTX *context);
+void SHA1_Update(SHA1_CTX *context, const uint8_t *data, uint32_t len);
+void SHA1_Final(uint8_t digest[20], SHA1_CTX *context);
 
 #ifdef __cplusplus
 };

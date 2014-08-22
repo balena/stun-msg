@@ -7,14 +7,23 @@
 #define __HMAC_SHA1_H__
 
 #include <stdint.h>
+#include "sha1.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void hmac_sha1(const uint8_t *text, int text_len,
-               const uint8_t *key, int key_len,
-               uint8_t digest[20]);
+typedef struct _HMAC_SHA1_CTX {
+  SHA1_CTX sha1ctx;
+  uint8_t k_ipad[65];
+  uint8_t k_opad[65];
+} HMAC_SHA1_CTX;
+
+void HMAC_SHA1_Init(HMAC_SHA1_CTX *ctx,
+                    const uint8_t *key, uint32_t key_len);
+void HMAC_SHA1_Update(HMAC_SHA1_CTX *ctx,
+                      const uint8_t *data, uint32_t data_len);
+void HMAC_SHA1_Final(uint8_t digest[20], HMAC_SHA1_CTX *ctx);
 
 #ifdef __cplusplus
 };
