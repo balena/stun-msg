@@ -11,12 +11,14 @@ set(CMAKE_C_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
 set(CMAKE_C_FLAGS_MINSIZEREL ${CMAKE_CXX_FLAGS_MINSIZEREL})
 set(CMAKE_C_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
 
+include_directories(include)
+
 add_library(stunmsg STATIC
   src/crc32.c src/crc32.h
   src/hmac_sha1.c src/hmac_sha1.h
   src/sha1.c src/sha1.h
   src/md5.c src/md5.h
-  src/stunmsg.c src/stunmsg.h
+  src/stun_msg.c include/stun/msg.h
 )
 
 include_directories(gtest/include src)
