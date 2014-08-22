@@ -7,9 +7,9 @@
  * This is free and unencumbered software released into the public domain
  * June 2013 waterjuice.org
  */
+
 #include "sha1.h"
 #include <memory.h>
-
 
 typedef union {
   uint8_t c[64];
@@ -96,9 +96,9 @@ void SHA1_Init(SHA1_CTX *context)
 }
 
 /* Run your data through this. */
-void SHA1_Update(SHA1_CTX *context, const uint8_t *data, uint32_t len)
+void SHA1_Update(SHA1_CTX *context, const uint8_t *data, size_t len)
 {
-  uint32_t i, j;
+  size_t i, j;
 
   j = (context->count[0] >> 3) & 63;
   if ((context->count[0] += len << 3) < (len << 3))
@@ -118,7 +118,7 @@ void SHA1_Update(SHA1_CTX *context, const uint8_t *data, uint32_t len)
 /* Add padding and return the message digest. */
 void SHA1_Final(uint8_t digest[20], SHA1_CTX *context)
 {
-  uint32_t i;
+  size_t i;
   uint8_t finalcount[8];
 
   for (i = 0; i < 8; i++) {

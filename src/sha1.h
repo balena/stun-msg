@@ -8,6 +8,7 @@
 #define __SHA1_H__
 
 #include <stdint.h>
+#include <stdlib.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,7 +21,7 @@ typedef struct _SHA1_CTX {
 } SHA1_CTX;
 
 void SHA1_Init(SHA1_CTX *context);
-void SHA1_Update(SHA1_CTX *context, const uint8_t *data, uint32_t len);
+void SHA1_Update(SHA1_CTX *context, const uint8_t *data, size_t len);
 void SHA1_Final(uint8_t digest[20], SHA1_CTX *context);
 
 #ifdef __cplusplus

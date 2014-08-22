@@ -6,7 +6,6 @@
 #ifndef __HMAC_SHA1_H__
 #define __HMAC_SHA1_H__
 
-#include <stdint.h>
 #include "sha1.h"
 
 #ifdef __cplusplus
@@ -20,9 +19,9 @@ typedef struct _HMAC_SHA1_CTX {
 } HMAC_SHA1_CTX;
 
 void HMAC_SHA1_Init(HMAC_SHA1_CTX *ctx,
-                    const uint8_t *key, uint32_t key_len);
+                    const uint8_t *key, size_t key_len);
 void HMAC_SHA1_Update(HMAC_SHA1_CTX *ctx,
-                      const uint8_t *data, uint32_t data_len);
+                      const uint8_t *data, size_t data_len);
 void HMAC_SHA1_Final(uint8_t digest[20], HMAC_SHA1_CTX *ctx);
 
 #ifdef __cplusplus

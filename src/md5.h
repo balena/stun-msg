@@ -27,6 +27,7 @@
 #define __MD5_H__
 
 #include <stdint.h>
+#include <stdlib.h>
 
 #ifdef __cplusplus
 extern "C" {
