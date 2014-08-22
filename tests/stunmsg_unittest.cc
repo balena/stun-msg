@@ -44,7 +44,7 @@ void PrintWord(const uint8_t *v, size_t size, std::ostream &out) {
   std::ostringstream out;
   size_t i, errors = 0;
   for (i = 0; i < size; i += 4) {
-    int len = 4;
+    size_t len = 4;
     if (i + len > size)
       len = size - i;
     out << "  ";
@@ -494,6 +494,76 @@ TEST(StunMsgEncode, RFC5769SampleRequestLongTerm) {
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
   EXPECT_EQ(STUN_MESSAGE_INTEGRITY, stun_attr_type(attr_hdr));
+
+  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
+  EXPECT_EQ(NULL, attr_hdr);
+}
+
+TEST(StunMsgEncode, ErrorResponse) {
+  const char reason_phrase[] = "Unknown Attribute";
+  const uint8_t expected_result[] = {
+    0x01,0x11,0x00,0x28, //    Request type and message length
+    0x21,0x12,0xa4,0x42, //    Magic cookie
+    0x78,0xad,0x34,0x33, // }
+    0xc6,0xad,0x72,0xc0, // }  Transaction ID
+    0x29,0xda,0x41,0x2e, // }
+    0x00,0x09,0x00,0x15, //    ERROR-CODE attribute header
+    0x00,0x00,0x04,0x14, //    class = 4, code = 20 (420)
+    0x55,0x6e,0x6b,0x6e, // }
+    0x6f,0x77,0x6e,0x20, // }
+    0x41,0x74,0x74,0x72, // }  Reason: Unknown Attribute
+    0x69,0x62,0x75,0x74, // }
+    0x65,0x00,0x00,0x00, // }
+    0x00,0x0A,0x00,0x06, //    UNKNOWN-ATTRIBUTES attribute header
+    0x00,0x1A,0x00,0x1B, //    0x001A, 0x001B
+    0x80,0x2C,0x00,0x00, //    0x802C
+  };
+
+  uint8_t buffer[sizeof(stun_msg_hdr)
+    + STUN_ATTR_ERROR_CODE_SIZE(sizeof(reason_phrase)-1)
+    + STUN_ATTR_UNKNOWN_SIZE(3)];
+
+  stun_msg_hdr *msg_hdr = (stun_msg_hdr *)buffer;
+  uint8_t tsx_id[12] = {
+    0x78,0xad,0x34,0x33,
+    0xc6,0xad,0x72,0xc0,
+    0x29,0xda,0x41,0x2e,
+  };
+  uint16_t unknown[] = { 0x001a, 0x001b, 0x802c };
+
+  ASSERT_EQ(sizeof(expected_result), sizeof(buffer));
+  ASSERT_EQ(1, stun_msg_verify((stun_msg_hdr*)expected_result,
+      sizeof(expected_result)));
+
+  stun_msg_hdr_init(msg_hdr, STUN_BINDING_ERROR_RESPONSE, tsx_id);
+  stun_attr_errcode_add(msg_hdr, 420, reason_phrase, 0);
+  stun_attr_unknown_add(msg_hdr, unknown, ARRAYSIZE(unknown), 0);
+
+  EXPECT_TRUE(IsEqual(expected_result, buffer,
+      sizeof(expected_result)));
+
+  // Now decoding
+  msg_hdr = (stun_msg_hdr *)expected_result;
+  EXPECT_EQ(STUN_BINDING_ERROR_RESPONSE, stun_msg_type(msg_hdr));
+  EXPECT_EQ(sizeof(expected_result), stun_msg_len(msg_hdr));
+
+  stun_attr_hdr *attr_hdr = stun_msg_next_attr(msg_hdr, NULL);
+  EXPECT_EQ(STUN_ERROR_CODE, stun_attr_type(attr_hdr));
+  stun_attr_errcode *attr_errcode = (stun_attr_errcode *)attr_hdr;
+  EXPECT_EQ(420, stun_attr_errcode_status(attr_errcode));
+  ASSERT_EQ(sizeof(reason_phrase)-1,
+      stun_attr_errcode_reason_len(attr_errcode));
+  EXPECT_TRUE(IsEqual((uint8_t*)reason_phrase,
+      (uint8_t*)stun_attr_errcode_reason(attr_errcode),
+      sizeof(reason_phrase)-1));
+
+  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
+  EXPECT_EQ(STUN_UNKNOWN_ATTRIBUTES, stun_attr_type(attr_hdr));
+  stun_attr_unknown *attr_unk = (stun_attr_unknown *)attr_hdr;
+  ASSERT_EQ(ARRAYSIZE(unknown), stun_attr_unknown_count(attr_unk));
+  for (size_t i = 0; i < ARRAYSIZE(unknown); i++) {
+    EXPECT_EQ(unknown[i], stun_attr_unknown_get(attr_unk, i));
+  }
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
   EXPECT_EQ(NULL, attr_hdr);
