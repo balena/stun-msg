@@ -4,15 +4,13 @@
  */
 
 #include "hmac_sha1.h"
-#include "sha1.h"
 #include <memory.h>
-
 
 /* 
  * Encode a string using HMAC - see RFC-2104 for details.
  */
 void HMAC_SHA1_Init(HMAC_SHA1_CTX *ctx,
-                    const uint8_t *key, uint32_t key_len) {
+                    const uint8_t *key, size_t key_len) {
   uint8_t tk[20];
   int i;
 
@@ -56,7 +54,7 @@ void HMAC_SHA1_Init(HMAC_SHA1_CTX *ctx,
 }
 
 void HMAC_SHA1_Update(HMAC_SHA1_CTX *ctx,
-                      const uint8_t *data, uint32_t data_len) {
+                      const uint8_t *data, size_t data_len) {
   SHA1_Update(&ctx->sha1ctx, data, data_len);  /* then text of datagram */
 }
 
