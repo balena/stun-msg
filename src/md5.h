@@ -28,6 +28,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Any 32-bit or wider unsigned integer data type will do */
 typedef uint32_t MD5_u32plus;
 
@@ -38,8 +42,12 @@ typedef struct {
   MD5_u32plus block[16];
 } MD5_CTX;
 
-extern void MD5_Init(MD5_CTX *ctx);
-extern void MD5_Update(MD5_CTX *ctx, const void *data, size_t size);
-extern void MD5_Final(uint8_t *result, MD5_CTX *ctx);
+void MD5_Init(MD5_CTX *ctx);
+void MD5_Update(MD5_CTX *ctx, const void *data, size_t size);
+void MD5_Final(uint8_t *result, MD5_CTX *ctx);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif // __MD5_H__
