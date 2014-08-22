@@ -524,6 +524,31 @@ uint16_t *stun_attr_unknown_next(const struct stun_attr_unknown *attr,
   return (uint16_t *)p;
 }
 
+int stun_attr_msgint_check(struct stun_attr_msgint *msgint,
+                           struct stun_msg_hdr *msg_hdr,
+                           const uint8_t *key, size_t key_len) {
+  uint8_t *p = (uint8_t *)msg_hdr;
+  uint8_t *p_end = stun_msg_end(msg_hdr) - STUN_ATTR_MSGINT_SIZE;
+  uint16_t length;
+  uint8_t digest[20];
+  HMAC_SHA1_CTX ctx;
+  struct stun_attr_hdr *fingerprint =
+      stun_msg_find_attr(msg_hdr, STUN_FINGERPRINT);
+  if (fingerprint) {
+    length = htons(ntohs(msg_hdr->length) - STUN_ATTR_UINT32_SIZE);
+    p_end -= STUN_ATTR_UINT32_SIZE;
+  } else {
+    length = msg_hdr->length;
+  }
+  HMAC_SHA1_Init(&ctx, key, key_len);
+  HMAC_SHA1_Update(&ctx, p, sizeof(msg_hdr->type));
+  HMAC_SHA1_Update(&ctx, (uint8_t*)&length, sizeof(length));
+  p += sizeof(msg_hdr->type) + sizeof(msg_hdr->length);
+  HMAC_SHA1_Update(&ctx, p, p_end - p);
+  HMAC_SHA1_Final(digest, &ctx);
+  return memcmp(digest, msgint->hmac, sizeof(digest)) == 0 ? 1 : 0;
+}
+
 void stun_key(const char *username, const char *realm, const char *password,
               uint8_t key[16]) {
   MD5_CTX ctx;
