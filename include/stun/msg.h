@@ -267,7 +267,13 @@ enum stun_status_type {
 /* Get STUN standard reason phrase for the specified error code. NULL is
  * returned for unknown error codes.
  */
-const char *stun_get_err_reason(int err_code);
+const char *stun_err_reason(int err_code);
+
+/* Get STUN message type name. */
+const char *stun_method_name(uint16_t type);
+
+/* Get STUN message class name. */
+const char *stun_class_name(uint16_t type);
 
 /* Initializes a STUN message. */
 void stun_msg_hdr_init(struct stun_msg_hdr *msg_hdr, uint16_t type,

@@ -77,7 +77,23 @@ static struct {
   { STUN_ERROR_GLOBAL_FAILURE,	         "Global Failure"},
 };
 
-const char *stun_get_err_reason(int err_code) {
+static const char *method_map[] = {
+  /* 0 */ "???",
+  /* 1 */ "Binding",
+  /* 2 */ "SharedSecret",
+  /* 3 */ "Allocate",
+  /* 4 */ "Refresh",
+  /* 5 */ "???",
+  /* 6 */ "Send",
+  /* 7 */ "Data",
+  /* 8 */ "CreatePermission",
+  /* 9 */ "ChannelBind",
+  /* A */ "Connect",
+  /* B */ "ConnectionBind",
+  /* C */ "ConnectionAttempt",
+};
+
+const char *stun_err_reason(int err_code) {
   int first = 0;
   int n = sizeof(err_msg_map) / sizeof(err_msg_map[0]);
 
@@ -96,6 +112,28 @@ const char *stun_get_err_reason(int err_code) {
   }
 
   return NULL;
+}
+
+const char *stun_method_name(uint16_t type)
+{
+  int method = STUN_GET_METHOD(type);
+  if (method >= sizeof(method_map)/sizeof(method_map[0]))
+	  return "???";
+  return method_map[method];
+}
+
+const char *stun_class_name(uint16_t type)
+{
+  if (STUN_IS_REQUEST(type))
+	  return "Request";
+  else if (STUN_IS_SUCCESS_RESPONSE(type))
+	  return "Success Response";
+  else if (STUN_IS_ERROR_RESPONSE(type))
+	  return "Error Response";
+  else if (STUN_IS_INDICATION(type))
+	  return "Indication";
+  else
+	  return "???";
 }
 
 void stun_msg_hdr_init(struct stun_msg_hdr *msg_hdr, uint16_t type,
@@ -198,14 +236,14 @@ void stun_attr_varsize_init(struct stun_attr_varsize *attr, uint16_t type,
 
 void stun_attr_uint8_init(struct stun_attr_uint8 *attr, uint16_t type,
                           uint8_t value) {
-  stun_attr_hdr_init(&attr->hdr, type, sizeof(attr->value));
+  stun_attr_hdr_init(&attr->hdr, type, 4);
   attr->value = value;
   memset(attr->unused, 0, sizeof(attr->unused));
 }
 
 void stun_attr_uint16_init(struct stun_attr_uint16 *attr, uint16_t type,
                            uint16_t value) {
-  stun_attr_hdr_init(&attr->hdr, type, sizeof(attr->value));
+  stun_attr_hdr_init(&attr->hdr, type, 4);
   attr->value = htons(value);
   attr->unused = 0;
 }
