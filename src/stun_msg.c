@@ -661,7 +661,7 @@ int stun_attr_msgint_check(stun_attr_msgint *msgint,
 
 void stun_genkey(const void *username, size_t username_len,
                  const void *realm, size_t realm_len,
-                 const char *password, size_t password_len,
+                 const void *password, size_t password_len,
                  uint8_t key[16]) {
   MD5_CTX ctx;
   MD5_Init(&ctx);
