@@ -549,10 +549,11 @@ int stun_attr_sockaddr_read(const stun_attr_sockaddr *attr,
   }
 }
 
-int stun_attr_xor_sockaddr_read(const stun_attr_sockaddr *attr,
+int stun_attr_xor_sockaddr_read(const stun_attr_xor_sockaddr *attr,
                                 const stun_msg_hdr *msg_hdr,
                                 struct sockaddr *addr) {
-  int status = stun_attr_sockaddr_read(attr, addr);
+  int status = stun_attr_sockaddr_read(
+      (const stun_attr_sockaddr *)attr, addr);
   if (status < STUN_OK)
     return status;
   if (addr->sa_family == AF_INET) {
