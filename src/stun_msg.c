@@ -241,11 +241,25 @@ void stun_attr_uint8_init(struct stun_attr_uint8 *attr, uint16_t type,
   memset(attr->unused, 0, sizeof(attr->unused));
 }
 
+void stun_attr_uint8_pad_init(struct stun_attr_uint8 *attr, uint16_t type,
+                              uint8_t value, uint8_t pad) {
+  stun_attr_hdr_init(&attr->hdr, type, 1);
+  attr->value = value;
+  memset(attr->unused, pad, sizeof(attr->unused));
+}
+
 void stun_attr_uint16_init(struct stun_attr_uint16 *attr, uint16_t type,
                            uint16_t value) {
   stun_attr_hdr_init(&attr->hdr, type, 4);
   attr->value = htons(value);
-  attr->unused = 0;
+  memset(attr->unused, 0, sizeof(attr->unused));
+}
+
+void stun_attr_uint16_pad_init(struct stun_attr_uint16 *attr, uint16_t type,
+                               uint16_t value, uint8_t pad) {
+  stun_attr_hdr_init(&attr->hdr, type, 2);
+  attr->value = htons(value);
+  memset(attr->unused, pad, sizeof(attr->unused));
 }
 
 void stun_attr_uint32_init(struct stun_attr_uint32 *attr, uint16_t type,
@@ -356,11 +370,27 @@ void stun_attr_uint8_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
   stun_msg_add_attr(msg_hdr, &attr->hdr);
 }
 
+void stun_attr_uint8_pad_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
+                             uint8_t value, uint8_t pad) {
+  struct stun_attr_uint8 *attr =
+      (struct stun_attr_uint8 *)stun_msg_end(msg_hdr);
+  stun_attr_uint8_pad_init(attr, type, value, pad);
+  stun_msg_add_attr(msg_hdr, &attr->hdr);
+}
+
 void stun_attr_uint16_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
                           uint16_t value) {
   struct stun_attr_uint16 *attr =
       (struct stun_attr_uint16 *)stun_msg_end(msg_hdr);
   stun_attr_uint16_init(attr, type, value);
+  stun_msg_add_attr(msg_hdr, &attr->hdr);
+}
+
+void stun_attr_uint16_pad_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
+                              uint16_t value, uint8_t pad) {
+  struct stun_attr_uint16 *attr =
+      (struct stun_attr_uint16 *)stun_msg_end(msg_hdr);
+  stun_attr_uint16_pad_init(attr, type, value, pad);
   stun_msg_add_attr(msg_hdr, &attr->hdr);
 }
 
