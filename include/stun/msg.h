@@ -499,7 +499,7 @@ int stun_attr_sockaddr_read(const stun_attr_sockaddr *attr,
 /* Reads a XOR'red sockaddr attribute. Returns error case the address family
  * is unknown (should be STUN_IPV4 or STUN_IPV6).
  */
-int stun_attr_xor_sockaddr_read(const stun_attr_sockaddr *attr,
+int stun_attr_xor_sockaddr_read(const stun_attr_xor_sockaddr *attr,
                                 const stun_msg_hdr *msg_hdr,
                                 struct sockaddr *addr);
 
