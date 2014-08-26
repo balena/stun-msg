@@ -189,7 +189,7 @@ struct stun_attr_uint8 {
 struct stun_attr_uint16 {
   struct stun_attr_hdr hdr;
   uint16_t value;                              /* single 16-bit value */
-  uint16_t unused;
+  uint8_t unused[2];
 };
 
 struct stun_attr_uint32 {
@@ -310,13 +310,62 @@ int stun_attr_xor_sockaddr_init(struct stun_attr_sockaddr *sockaddr_attr,
 void stun_attr_varsize_init(struct stun_attr_varsize *attr, uint16_t type,
                             const uint8_t *buf, size_t buf_size, uint8_t pad);
 
-/* Initializes an 8-bit attribute */
+/* Initializes an 8-bit attribute. Length will be 4 followed by 3 zeroed
+ * bytes (normally used as RFFU = Reserved For Future Use), like the below:
+ *
+ *      0                   1                   2                   3
+ *      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     |         type                  |            Length=4           |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     |     value     |                   RFFU=0                      |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
 void stun_attr_uint8_init(struct stun_attr_uint8 *attr, uint16_t type,
                           uint8_t value);
 
-/* Initializes a 16-bit attribute */
+/* Initializes an 8-bit attribute with padding. Length will be 1 followed by
+ * 3 padding bytes, like the below:
+ *
+ *      0                   1                   2                   3
+ *      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     |         type                  |            Length=1           |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     |     value     |                   padding                     |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+void stun_attr_uint8_pad_init(struct stun_attr_uint8 *attr, uint16_t type,
+                              uint8_t value, uint8_t pad);
+
+/* Initializes a 16-bit attribute. Length will be 4 followed by 2 zeroed
+ * bytes (normally used as RFFU = Reserved For Future Use), like the below:
+ *
+ *      0                   1                   2                   3
+ *      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     |         type                  |            Length=4           |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     |         value                 |             RFFU=0            |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
 void stun_attr_uint16_init(struct stun_attr_uint16 *attr, uint16_t type,
                            uint16_t value);
+
+/* Initializes a 16-bit attribute with padding. Length will be 4 followed by
+ * 2 zeroed bytes (normally used as RFFU = Reserved For Future Use), like the
+ * below:
+ *
+ *      0                   1                   2                   3
+ *      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     |         type                  |            Length=2           |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     |         value                 |            padding            |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+void stun_attr_uint16_pad_init(struct stun_attr_uint16 *attr, uint16_t type,
+                               uint16_t value, uint8_t pad);
 
 /* Initializes a 32-bit attribute */
 void stun_attr_uint32_init(struct stun_attr_uint32 *attr, uint16_t type,
@@ -379,9 +428,17 @@ void stun_attr_varsize_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
 void stun_attr_uint8_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
                          uint8_t value);
 
+/* Adds an 8-bit attribute with padding to the message end */
+void stun_attr_uint8_pad_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
+                             uint8_t value, uint8_t pad);
+
 /* Adds a 16-bit attribute to the message end */
 void stun_attr_uint16_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
                           uint16_t value);
+
+/* Adds a 16-bit attribute with padding to the message end */
+void stun_attr_uint16_pad_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
+                              uint16_t value, uint8_t pad);
 
 /* Adds a 32-bit attribute to the message end */
 void stun_attr_uint32_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
