@@ -235,6 +235,12 @@ typedef struct _stun_attr_unknown {
 /* Gets the size of a UNKNOWN attribute, given the number of attributes */
 #define STUN_ATTR_UNKNOWN_SIZE(x) (4 + ((((x) << 1) + 3) & (~3)))
 
+/* Gets the size of a 8-bit attribute */
+#define STUN_ATTR_UINT8_SIZE (4 + 4)
+
+/* Gets the size of a 16-bit attribute */
+#define STUN_ATTR_UINT16_SIZE (4 + 4)
+
 /* Gets the size of a 32-bit attribute */
 #define STUN_ATTR_UINT32_SIZE (4 + 4)
 
@@ -547,7 +553,7 @@ int stun_attr_msgint_check(stun_attr_msgint *msgint,
  */
 void stun_genkey(const void *username, size_t username_len,
                  const void *realm, size_t realm_len,
-                 const char *password, size_t password_len,
+                 const void *password, size_t password_len,
                  uint8_t key[16]);
 
 #ifdef __cplusplus
