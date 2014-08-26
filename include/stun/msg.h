@@ -540,8 +540,10 @@ int stun_attr_msgint_check(stun_attr_msgint *msgint,
 /* Calculates the key used for long term credentials for using with the
  * MESSAGE-INTEGRITY attribute; MD5(user:realm:pass).
  */
-void stun_key(const char *username, const char *realm, const char *password,
-              uint8_t key[16]);
+void stun_genkey(const void *username, size_t username_len,
+                 const void *realm, size_t realm_len,
+                 const char *password, size_t password_len,
+                 uint8_t key[16]);
 
 #ifdef __cplusplus
 };
