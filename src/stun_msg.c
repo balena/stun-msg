@@ -198,12 +198,12 @@ int stun_attr_sockaddr_init(stun_attr_sockaddr *attr,
   }
 }
 
-int stun_attr_xor_sockaddr_init(stun_attr_sockaddr *attr,
+int stun_attr_xor_sockaddr_init(stun_attr_xor_sockaddr *attr,
                                 uint16_t type, const struct sockaddr *addr,
                                 const stun_msg_hdr *hdr) {
   uint8_t *p;
   uint8_t *begin = (uint8_t *)attr;
-  int status = stun_attr_sockaddr_init(attr, type, addr);
+  int status = stun_attr_sockaddr_init((stun_attr_sockaddr*)attr, type, addr);
   if (status != STUN_OK)
     return status;
   /* advance to the port */
@@ -240,7 +240,7 @@ void stun_attr_uint8_init(stun_attr_uint8 *attr, uint16_t type,
   memset(attr->unused, 0, sizeof(attr->unused));
 }
 
-void stun_attr_uint8_pad_init(stun_attr_uint8 *attr, uint16_t type,
+void stun_attr_uint8_pad_init(stun_attr_uint8_pad *attr, uint16_t type,
                               uint8_t value, uint8_t pad) {
   stun_attr_hdr_init(&attr->hdr, type, 1);
   attr->value = value;
@@ -254,7 +254,7 @@ void stun_attr_uint16_init(stun_attr_uint16 *attr, uint16_t type,
   memset(attr->unused, 0, sizeof(attr->unused));
 }
 
-void stun_attr_uint16_pad_init(stun_attr_uint16 *attr, uint16_t type,
+void stun_attr_uint16_pad_init(stun_attr_uint16_pad *attr, uint16_t type,
                                uint16_t value, uint8_t pad) {
   stun_attr_hdr_init(&attr->hdr, type, 2);
   attr->value = htons(value);
@@ -344,8 +344,8 @@ int stun_attr_sockaddr_add(stun_msg_hdr *msg_hdr,
 
 int stun_attr_xor_sockaddr_add(stun_msg_hdr *msg_hdr,
                                uint16_t type, const struct sockaddr *addr) {
-  stun_attr_sockaddr *attr =
-      (stun_attr_sockaddr *)stun_msg_end(msg_hdr);
+  stun_attr_xor_sockaddr *attr =
+      (stun_attr_xor_sockaddr *)stun_msg_end(msg_hdr);
   int status = stun_attr_xor_sockaddr_init(attr, type, addr, msg_hdr);
   if (status != STUN_OK)
     return status;
@@ -371,8 +371,8 @@ void stun_attr_uint8_add(stun_msg_hdr *msg_hdr, uint16_t type,
 
 void stun_attr_uint8_pad_add(stun_msg_hdr *msg_hdr, uint16_t type,
                              uint8_t value, uint8_t pad) {
-  stun_attr_uint8 *attr =
-      (stun_attr_uint8 *)stun_msg_end(msg_hdr);
+  stun_attr_uint8_pad *attr =
+      (stun_attr_uint8_pad *)stun_msg_end(msg_hdr);
   stun_attr_uint8_pad_init(attr, type, value, pad);
   stun_msg_add_attr(msg_hdr, &attr->hdr);
 }
@@ -387,8 +387,8 @@ void stun_attr_uint16_add(stun_msg_hdr *msg_hdr, uint16_t type,
 
 void stun_attr_uint16_pad_add(stun_msg_hdr *msg_hdr, uint16_t type,
                               uint16_t value, uint8_t pad) {
-  stun_attr_uint16 *attr =
-      (stun_attr_uint16 *)stun_msg_end(msg_hdr);
+  stun_attr_uint16_pad *attr =
+      (stun_attr_uint16_pad *)stun_msg_end(msg_hdr);
   stun_attr_uint16_pad_init(attr, type, value, pad);
   stun_msg_add_attr(msg_hdr, &attr->hdr);
 }

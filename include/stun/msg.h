@@ -247,6 +247,11 @@ typedef struct _stun_attr_unknown {
 /* Gets the size of a FINGERPRINT attribute */
 #define STUN_ATTR_FINGERPRINT_SIZE STUN_ATTR_UINT32_SIZE
 
+/* Equivalent types */
+typedef stun_attr_sockaddr stun_attr_xor_sockaddr;
+typedef stun_attr_uint8 stun_attr_uint8_pad;
+typedef stun_attr_uint16 stun_attr_uint16_pad;
+
 /* The returned values from the below functions */
 enum stun_status_type {
   STUN_OK                    = 0,
@@ -298,7 +303,7 @@ int stun_attr_sockaddr_init(stun_attr_sockaddr *sockaddr_attr, uint16_t type,
                             const struct sockaddr *addr);
 
 /* Initializes a XOR'ed sockaddr attribute */
-int stun_attr_xor_sockaddr_init(stun_attr_sockaddr *sockaddr_attr,
+int stun_attr_xor_sockaddr_init(stun_attr_xor_sockaddr *sockaddr_attr,
                                 uint16_t type, const struct sockaddr *addr,
                                 const stun_msg_hdr *msg_hdr);
 
@@ -332,7 +337,7 @@ void stun_attr_uint8_init(stun_attr_uint8 *attr, uint16_t type, uint8_t value);
  *     |     value     |                   padding                     |
  *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
-void stun_attr_uint8_pad_init(stun_attr_uint8 *attr, uint16_t type,
+void stun_attr_uint8_pad_init(stun_attr_uint8_pad *attr, uint16_t type,
                               uint8_t value, uint8_t pad);
 
 /* Initializes a 16-bit attribute. Length will be 4 followed by 2 zeroed
@@ -361,7 +366,7 @@ void stun_attr_uint16_init(stun_attr_uint16 *attr, uint16_t type,
  *     |         value                 |            padding            |
  *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
-void stun_attr_uint16_pad_init(stun_attr_uint16 *attr, uint16_t type,
+void stun_attr_uint16_pad_init(stun_attr_uint16_pad *attr, uint16_t type,
                                uint16_t value, uint8_t pad);
 
 /* Initializes a 32-bit attribute */
