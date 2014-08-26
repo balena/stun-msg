@@ -462,7 +462,8 @@ TEST(StunMsgEncode, RFC5769SampleRequestLongTerm) {
   };
 
   uint8_t key[16];
-  stun_key(username, realm, password, key);
+  stun_genkey(username, sizeof(username)-1, realm, sizeof(realm)-1,
+              password, sizeof(password)-1, key);
 
   ASSERT_EQ(sizeof(expected_result), sizeof(buffer));
   ASSERT_EQ(1, stun_msg_verify((stun_msg_hdr*)expected_result,
