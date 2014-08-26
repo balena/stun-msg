@@ -57,24 +57,23 @@ static struct {
   int err_code;
   const char *err_msg;
 } err_msg_map[] = {
-  { STUN_ERROR_TRY_ALTERNATE,		         "Try Alternate"}, 
-  { STUN_ERROR_BAD_REQUEST,		           "Bad Request"},
-  { STUN_ERROR_UNAUTHORIZED,		         "Unauthorized"},
-  { STUN_ERROR_FORBIDDEN,		             "Forbidden"},
-  { STUN_ERROR_UNKNOWN_ATTRIBUTE,	       "Unknown Attribute"},
-  { STUN_ERROR_ALLOCATION_MISMATCH,	     "Allocation Mismatch"},
-  { STUN_ERROR_STALE_NONCE,		           "Stale Nonce"},
-  { STUN_ERROR_TRANSITIONING,		         "Active Destination Already Set"},
-  { STUN_ERROR_WRONG_CREDENTIALS,	       "Wrong Credentials"},
-  { STUN_ERROR_UNSUPP_TRANSPORT_PROTO,   "Unsupported Transport Protocol"},
-  { STUN_ERROR_OPER_TCP_ONLY,		         "Operation for TCP Only"},
-  { STUN_ERROR_CONNECTION_FAILURE,	     "Connection Failure"},
-  { STUN_ERROR_CONNECTION_TIMEOUT,	     "Connection Timeout"},
-  { STUN_ERROR_ALLOCATION_QUOTA_REACHED, "Allocation Quota Reached"},
-  { STUN_ERROR_ROLE_CONFLICT,		         "Role Conflict"},
-  { STUN_ERROR_SERVER_ERROR,		         "Server Error"},
-  { STUN_ERROR_INSUFFICIENT_CAPACITY,	   "Insufficient Capacity"},
-  { STUN_ERROR_GLOBAL_FAILURE,	         "Global Failure"},
+  { STUN_ERROR_TRY_ALTERNATE,             "Try Alternate"}, 
+  { STUN_ERROR_BAD_REQUEST,               "Bad Request"},
+  { STUN_ERROR_UNAUTHORIZED,              "Unauthorized"},
+  { STUN_ERROR_FORBIDDEN,                 "Forbidden"},
+  { STUN_ERROR_UNKNOWN_ATTRIBUTE,         "Unknown Attribute"},
+  { STUN_ERROR_ALLOCATION_MISMATCH,       "Allocation Mismatch"},
+  { STUN_ERROR_STALE_NONCE,               "Stale Nonce"},
+  { STUN_ERROR_ADDR_FAMILY_NOT_SUPP,      "Address Family Not Supported" },
+  { STUN_ERROR_WRONG_CREDENTIALS,         "Wrong Credentials"},
+  { STUN_ERROR_UNSUPP_TRANSPORT_PROTO,    "Unsupported Transport Protocol"},
+  { STUN_ERROR_PEER_ADD_FAMILY_MISMATCH,  "Peer Address Family Mismatch" },
+  { STUN_ERROR_CONNECTION_ALREADY_EXISTS, "Connection Already Exists"},
+  { STUN_ERROR_CONNECTION_FAILURE,        "Connection Failure"},
+  { STUN_ERROR_ALLOCATION_QUOTA_REACHED,  "Allocation Quota Reached"},
+  { STUN_ERROR_ROLE_CONFLICT,             "Role Conflict"},
+  { STUN_ERROR_SERVER_ERROR,              "Server Error"},
+  { STUN_ERROR_INSUFFICIENT_CAPACITY,     "Insufficient Capacity"},
 };
 
 static const char *method_map[] = {
@@ -136,39 +135,39 @@ const char *stun_class_name(uint16_t type)
 	  return "???";
 }
 
-void stun_msg_hdr_init(struct stun_msg_hdr *msg_hdr, uint16_t type,
+void stun_msg_hdr_init(stun_msg_hdr *msg_hdr, uint16_t type,
                        const uint8_t tsx_id[12]) {
-  memset(msg_hdr, 0, sizeof(struct stun_msg_hdr));
+  memset(msg_hdr, 0, sizeof(stun_msg_hdr));
   msg_hdr->type = htons(type);
   msg_hdr->magic = htonl(STUN_MAGIC_COOKIE);
   memcpy(&msg_hdr->tsx_id, tsx_id, sizeof(msg_hdr->tsx_id));
 }
 
-size_t stun_msg_len(const struct stun_msg_hdr *msg_hdr) {
-  return sizeof(struct stun_msg_hdr) + ntohs(msg_hdr->length);
+size_t stun_msg_len(const stun_msg_hdr *msg_hdr) {
+  return sizeof(stun_msg_hdr) + ntohs(msg_hdr->length);
 }
 
-uint16_t stun_msg_type(const struct stun_msg_hdr *msg_hdr) {
+uint16_t stun_msg_type(const stun_msg_hdr *msg_hdr) {
   return ntohs(msg_hdr->type);
 }
 
-uint8_t *stun_msg_end(struct stun_msg_hdr *msg_hdr) {
+uint8_t *stun_msg_end(stun_msg_hdr *msg_hdr) {
   uint8_t *begin = (uint8_t *)msg_hdr;
   return begin + stun_msg_len(msg_hdr);
 }
 
-void stun_attr_hdr_init(struct stun_attr_hdr *hdr, uint16_t type,
+void stun_attr_hdr_init(stun_attr_hdr *hdr, uint16_t type,
                         uint16_t length) {
   hdr->type = htons(type);
   hdr->length = htons(length);
 }
 
-uint8_t *stun_attr_end(struct stun_attr_hdr *attr_hdr) {
+uint8_t *stun_attr_end(stun_attr_hdr *attr_hdr) {
   uint8_t *begin = (uint8_t *)attr_hdr;
   return begin + stun_attr_block_len(attr_hdr);
 }
 
-int stun_attr_sockaddr_init(struct stun_attr_sockaddr *attr,
+int stun_attr_sockaddr_init(stun_attr_sockaddr *attr,
                             uint16_t type, const struct sockaddr *addr) {
   if (addr->sa_family == AF_INET) {
     struct sockaddr_in *sin = (struct sockaddr_in *) addr;
@@ -199,9 +198,9 @@ int stun_attr_sockaddr_init(struct stun_attr_sockaddr *attr,
   }
 }
 
-int stun_attr_xor_sockaddr_init(struct stun_attr_sockaddr *attr,
+int stun_attr_xor_sockaddr_init(stun_attr_sockaddr *attr,
                                 uint16_t type, const struct sockaddr *addr,
-                                const struct stun_msg_hdr *hdr) {
+                                const stun_msg_hdr *hdr) {
   uint8_t *p;
   uint8_t *begin = (uint8_t *)attr;
   int status = stun_attr_sockaddr_init(attr, type, addr);
@@ -226,61 +225,61 @@ int stun_attr_xor_sockaddr_init(struct stun_attr_sockaddr *attr,
   return STUN_OK;
 }
 
-void stun_attr_varsize_init(struct stun_attr_varsize *attr, uint16_t type,
-                            const uint8_t *buf, size_t buf_size, uint8_t pad) {
+void stun_attr_varsize_init(stun_attr_varsize *attr, uint16_t type,
+                            const void *buf, size_t buf_size, uint8_t pad) {
   uint8_t *p = (uint8_t *)attr;
   stun_attr_hdr_init(&attr->hdr, type, (uint16_t)buf_size);
   memcpy(attr->value, buf, buf_size);
   store_padding(p + sizeof(attr->hdr) + buf_size, buf_size, pad);
 }
 
-void stun_attr_uint8_init(struct stun_attr_uint8 *attr, uint16_t type,
+void stun_attr_uint8_init(stun_attr_uint8 *attr, uint16_t type,
                           uint8_t value) {
   stun_attr_hdr_init(&attr->hdr, type, 4);
   attr->value = value;
   memset(attr->unused, 0, sizeof(attr->unused));
 }
 
-void stun_attr_uint8_pad_init(struct stun_attr_uint8 *attr, uint16_t type,
+void stun_attr_uint8_pad_init(stun_attr_uint8 *attr, uint16_t type,
                               uint8_t value, uint8_t pad) {
   stun_attr_hdr_init(&attr->hdr, type, 1);
   attr->value = value;
   memset(attr->unused, pad, sizeof(attr->unused));
 }
 
-void stun_attr_uint16_init(struct stun_attr_uint16 *attr, uint16_t type,
+void stun_attr_uint16_init(stun_attr_uint16 *attr, uint16_t type,
                            uint16_t value) {
   stun_attr_hdr_init(&attr->hdr, type, 4);
   attr->value = htons(value);
   memset(attr->unused, 0, sizeof(attr->unused));
 }
 
-void stun_attr_uint16_pad_init(struct stun_attr_uint16 *attr, uint16_t type,
+void stun_attr_uint16_pad_init(stun_attr_uint16 *attr, uint16_t type,
                                uint16_t value, uint8_t pad) {
   stun_attr_hdr_init(&attr->hdr, type, 2);
   attr->value = htons(value);
   memset(attr->unused, pad, sizeof(attr->unused));
 }
 
-void stun_attr_uint32_init(struct stun_attr_uint32 *attr, uint16_t type,
+void stun_attr_uint32_init(stun_attr_uint32 *attr, uint16_t type,
                            uint32_t value) {
   stun_attr_hdr_init(&attr->hdr, type, sizeof(attr->value));
   attr->value = htonl(value);
 }
 
-void stun_attr_uint64_init(struct stun_attr_uint64 *attr, uint16_t type,
+void stun_attr_uint64_init(stun_attr_uint64 *attr, uint16_t type,
                            uint64_t value) {
   stun_attr_hdr_init(&attr->hdr, type, sizeof(attr->value));
   attr->value = htonll(value);
 }
 
-void stun_attr_errcode_init(struct stun_attr_errcode *attr, int err_code,
+void stun_attr_errcode_init(stun_attr_errcode *attr, int err_code,
                             const char *err_reason, uint8_t pad) {
   int reason_len = strlen(err_reason);
   uint8_t *p = (uint8_t *)attr;
   uint16_t attr_len = (uint16_t)(sizeof(attr->unused)
       + sizeof(attr->err_class) + sizeof(attr->err_code) + reason_len);
-  stun_attr_hdr_init(&attr->hdr, STUN_ERROR_CODE, attr_len);
+  stun_attr_hdr_init(&attr->hdr, STUN_ATTR_ERROR_CODE, attr_len);
   attr->unused = 0;
   attr->err_class = (uint8_t)(err_code / 100);
   attr->err_code = err_code % 100;
@@ -288,54 +287,54 @@ void stun_attr_errcode_init(struct stun_attr_errcode *attr, int err_code,
   store_padding(p + sizeof(attr->hdr) + attr_len, attr_len, pad);
 }
 
-void stun_attr_unknown_init(struct stun_attr_unknown *attr,
+void stun_attr_unknown_init(stun_attr_unknown *attr,
                             const uint16_t *unknown_codes, size_t count,
                             uint8_t pad) {
   size_t i;
   uint8_t *p = (uint8_t *)attr;
   uint16_t attr_len = (uint16_t)(count << 1);
-  stun_attr_hdr_init(&attr->hdr, STUN_UNKNOWN_ATTRIBUTES, attr_len);
+  stun_attr_hdr_init(&attr->hdr, STUN_ATTR_UNKNOWN_ATTRIBUTES, attr_len);
   for (i = 0; i < count; i++)
     attr->attrs[i] = htons(unknown_codes[i]);
   store_padding(p + sizeof(attr->hdr) + attr_len, attr_len, pad);
 }
 
-void stun_attr_msgint_init(struct stun_attr_msgint *attr,
-                           const struct stun_msg_hdr *msg_hdr,
-                           const uint8_t *key, size_t key_len) {
+void stun_attr_msgint_init(stun_attr_msgint *attr,
+                           const stun_msg_hdr *msg_hdr,
+                           const void *key, size_t key_len) {
   uint8_t *p = (uint8_t *)msg_hdr;
   uint8_t *p_end = p + stun_msg_len(msg_hdr) - sizeof(*attr);
   HMAC_SHA1_CTX ctx;
-  HMAC_SHA1_Init(&ctx, key, key_len);
+  HMAC_SHA1_Init(&ctx, (const uint8_t*)key, key_len);
   HMAC_SHA1_Update(&ctx, p, p_end - p);
   HMAC_SHA1_Final(attr->hmac, &ctx);
 }
 
-void stun_attr_fingerprint_init(struct stun_attr_uint32 *attr,
-                                const struct stun_msg_hdr *msg_hdr) {
+void stun_attr_fingerprint_init(stun_attr_uint32 *attr,
+                                const stun_msg_hdr *msg_hdr) {
   uint8_t *p = (uint8_t *)msg_hdr;
   uint8_t *p_end = p + stun_msg_len(msg_hdr) - sizeof(*attr);
   uint32_t value = crc32(0, p, p_end - p) ^ STUN_XOR_FINGERPRINT;
   attr->value = htonl(value);
 }
 
-void stun_msg_add_attr(struct stun_msg_hdr *msg_hdr,
-                       const struct stun_attr_hdr *attr_hdr) {
+void stun_msg_add_attr(stun_msg_hdr *msg_hdr,
+                       const stun_attr_hdr *attr_hdr) {
   size_t attr_len = stun_attr_block_len(attr_hdr);
   msg_hdr->length = htons(ntohs(msg_hdr->length) + (uint16_t)attr_len);
 }
 
-void stun_attr_empty_add(struct stun_msg_hdr *msg_hdr, uint16_t type) {
-  struct stun_attr_hdr *attr =
-      (struct stun_attr_hdr *)stun_msg_end(msg_hdr);
+void stun_attr_empty_add(stun_msg_hdr *msg_hdr, uint16_t type) {
+  stun_attr_hdr *attr =
+      (stun_attr_hdr *)stun_msg_end(msg_hdr);
   stun_attr_hdr_init(attr, type, 0);
   stun_msg_add_attr(msg_hdr, attr);
 }
 
-int stun_attr_sockaddr_add(struct stun_msg_hdr *msg_hdr,
+int stun_attr_sockaddr_add(stun_msg_hdr *msg_hdr,
                            uint16_t type, const struct sockaddr *addr) {
-  struct stun_attr_sockaddr *attr =
-      (struct stun_attr_sockaddr *)stun_msg_end(msg_hdr);
+  stun_attr_sockaddr *attr =
+      (stun_attr_sockaddr *)stun_msg_end(msg_hdr);
   int status = stun_attr_sockaddr_init(attr, type, addr);
   if (status != STUN_OK)
     return status;
@@ -343,10 +342,10 @@ int stun_attr_sockaddr_add(struct stun_msg_hdr *msg_hdr,
   return STUN_OK;
 }
 
-int stun_attr_xor_sockaddr_add(struct stun_msg_hdr *msg_hdr,
+int stun_attr_xor_sockaddr_add(stun_msg_hdr *msg_hdr,
                                uint16_t type, const struct sockaddr *addr) {
-  struct stun_attr_sockaddr *attr =
-      (struct stun_attr_sockaddr *)stun_msg_end(msg_hdr);
+  stun_attr_sockaddr *attr =
+      (stun_attr_sockaddr *)stun_msg_end(msg_hdr);
   int status = stun_attr_xor_sockaddr_init(attr, type, addr, msg_hdr);
   if (status != STUN_OK)
     return status;
@@ -354,101 +353,102 @@ int stun_attr_xor_sockaddr_add(struct stun_msg_hdr *msg_hdr,
   return STUN_OK;
 }
 
-void stun_attr_varsize_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
-                           const uint8_t *buf, size_t buf_size, uint8_t pad) {
-  struct stun_attr_varsize *attr =
-      (struct stun_attr_varsize *)stun_msg_end(msg_hdr);
+void stun_attr_varsize_add(stun_msg_hdr *msg_hdr, uint16_t type,
+                           const void *buf, size_t buf_size, uint8_t pad) {
+  stun_attr_varsize *attr =
+      (stun_attr_varsize *)stun_msg_end(msg_hdr);
   stun_attr_varsize_init(attr, type, buf, buf_size, pad);
   stun_msg_add_attr(msg_hdr, &attr->hdr);
 }
 
-void stun_attr_uint8_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
+void stun_attr_uint8_add(stun_msg_hdr *msg_hdr, uint16_t type,
                          uint8_t value) {
-  struct stun_attr_uint8 *attr =
-      (struct stun_attr_uint8 *)stun_msg_end(msg_hdr);
+  stun_attr_uint8 *attr =
+      (stun_attr_uint8 *)stun_msg_end(msg_hdr);
   stun_attr_uint8_init(attr, type, value);
   stun_msg_add_attr(msg_hdr, &attr->hdr);
 }
 
-void stun_attr_uint8_pad_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
+void stun_attr_uint8_pad_add(stun_msg_hdr *msg_hdr, uint16_t type,
                              uint8_t value, uint8_t pad) {
-  struct stun_attr_uint8 *attr =
-      (struct stun_attr_uint8 *)stun_msg_end(msg_hdr);
+  stun_attr_uint8 *attr =
+      (stun_attr_uint8 *)stun_msg_end(msg_hdr);
   stun_attr_uint8_pad_init(attr, type, value, pad);
   stun_msg_add_attr(msg_hdr, &attr->hdr);
 }
 
-void stun_attr_uint16_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
+void stun_attr_uint16_add(stun_msg_hdr *msg_hdr, uint16_t type,
                           uint16_t value) {
-  struct stun_attr_uint16 *attr =
-      (struct stun_attr_uint16 *)stun_msg_end(msg_hdr);
+  stun_attr_uint16 *attr =
+      (stun_attr_uint16 *)stun_msg_end(msg_hdr);
   stun_attr_uint16_init(attr, type, value);
   stun_msg_add_attr(msg_hdr, &attr->hdr);
 }
 
-void stun_attr_uint16_pad_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
+void stun_attr_uint16_pad_add(stun_msg_hdr *msg_hdr, uint16_t type,
                               uint16_t value, uint8_t pad) {
-  struct stun_attr_uint16 *attr =
-      (struct stun_attr_uint16 *)stun_msg_end(msg_hdr);
+  stun_attr_uint16 *attr =
+      (stun_attr_uint16 *)stun_msg_end(msg_hdr);
   stun_attr_uint16_pad_init(attr, type, value, pad);
   stun_msg_add_attr(msg_hdr, &attr->hdr);
 }
 
-void stun_attr_uint32_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
+void stun_attr_uint32_add(stun_msg_hdr *msg_hdr, uint16_t type,
                           uint32_t value) {
-  struct stun_attr_uint32 *attr =
-      (struct stun_attr_uint32 *)stun_msg_end(msg_hdr);
+  stun_attr_uint32 *attr =
+      (stun_attr_uint32 *)stun_msg_end(msg_hdr);
   stun_attr_uint32_init(attr, type, value);
   stun_msg_add_attr(msg_hdr, &attr->hdr);
 }
 
-void stun_attr_uint64_add(struct stun_msg_hdr *msg_hdr, uint16_t type,
+void stun_attr_uint64_add(stun_msg_hdr *msg_hdr, uint16_t type,
                           uint64_t value) {
-  struct stun_attr_uint64 *attr =
-      (struct stun_attr_uint64 *)stun_msg_end(msg_hdr);
+  stun_attr_uint64 *attr =
+      (stun_attr_uint64 *)stun_msg_end(msg_hdr);
   stun_attr_uint64_init(attr, type, value);
   stun_msg_add_attr(msg_hdr, &attr->hdr);
 }
 
-void stun_attr_errcode_add(struct stun_msg_hdr *msg_hdr, int err_code,
+void stun_attr_errcode_add(stun_msg_hdr *msg_hdr, int err_code,
                            const char *err_reason, uint8_t pad) {
-  struct stun_attr_errcode *attr =
-      (struct stun_attr_errcode *)stun_msg_end(msg_hdr);
+  stun_attr_errcode *attr =
+      (stun_attr_errcode *)stun_msg_end(msg_hdr);
   stun_attr_errcode_init(attr, err_code, err_reason, pad);
   stun_msg_add_attr(msg_hdr, &attr->hdr);
 }
 
-void stun_attr_unknown_add(struct stun_msg_hdr *msg_hdr,
+void stun_attr_unknown_add(stun_msg_hdr *msg_hdr,
                            const uint16_t *unknown_codes, size_t count,
                            uint8_t pad) {
-  struct stun_attr_unknown *attr =
-      (struct stun_attr_unknown *)stun_msg_end(msg_hdr);
+  stun_attr_unknown *attr =
+      (stun_attr_unknown *)stun_msg_end(msg_hdr);
   stun_attr_unknown_init(attr, unknown_codes, count, pad);
   stun_msg_add_attr(msg_hdr, &attr->hdr);
 }
 
-void stun_attr_msgint_add(struct stun_msg_hdr *msg_hdr,
-                          const uint8_t *key, size_t key_len) {
-  struct stun_attr_msgint *attr =
-      (struct stun_attr_msgint *)stun_msg_end(msg_hdr);
-  stun_attr_hdr_init(&attr->hdr, STUN_MESSAGE_INTEGRITY, sizeof(attr->hmac));
+void stun_attr_msgint_add(stun_msg_hdr *msg_hdr,
+                          const void *key, size_t key_len) {
+  stun_attr_msgint *attr =
+      (stun_attr_msgint *)stun_msg_end(msg_hdr);
+  stun_attr_hdr_init(&attr->hdr, STUN_ATTR_MESSAGE_INTEGRITY,
+      sizeof(attr->hmac));
   stun_msg_add_attr(msg_hdr, &attr->hdr);
   stun_attr_msgint_init(attr, msg_hdr, key, key_len);
 }
 
-void stun_attr_fingerprint_add(struct stun_msg_hdr *msg_hdr) {
-  struct stun_attr_uint32 *attr =
-      (struct stun_attr_uint32 *)stun_msg_end(msg_hdr);
-  stun_attr_hdr_init(&attr->hdr, STUN_FINGERPRINT, sizeof(attr->value));
+void stun_attr_fingerprint_add(stun_msg_hdr *msg_hdr) {
+  stun_attr_uint32 *attr =
+      (stun_attr_uint32 *)stun_msg_end(msg_hdr);
+  stun_attr_hdr_init(&attr->hdr, STUN_ATTR_FINGERPRINT, sizeof(attr->value));
   stun_msg_add_attr(msg_hdr, &attr->hdr);
   stun_attr_fingerprint_init(attr, msg_hdr);
 }
 
-int stun_msg_verify(const struct stun_msg_hdr *msg_hdr, size_t msg_size) {
+int stun_msg_verify(const stun_msg_hdr *msg_hdr, size_t msg_size) {
   size_t msg_len;
   const uint8_t *p = (const uint8_t*)msg_hdr;
   const uint8_t *p_end;
-  const struct stun_attr_hdr *attr_hdr;
+  const stun_attr_hdr *attr_hdr;
 
   /* First byte of STUN message is always 0x00 or 0x01. */
   if (*p != 0x00 && *p != 0x01)
@@ -467,21 +467,21 @@ int stun_msg_verify(const struct stun_msg_hdr *msg_hdr, size_t msg_size) {
 
   /* Check if the attribute lengths don't exceed the message length. */
   p_end = p + msg_len;
-  p += sizeof(struct stun_msg_hdr);
+  p += sizeof(stun_msg_hdr);
   if (p == p_end)
     return 1; /* It's an empty message, nothing else to check */
   do {
-    attr_hdr = (const struct stun_attr_hdr *)p;
+    attr_hdr = (const stun_attr_hdr *)p;
     p += stun_attr_block_len(attr_hdr);
   } while (p < p_end);
   if (p != p_end)
     return 0;
 
 	/* If FINGERPRINT is the last attribute, check if is valid */
-  if (ntohs(attr_hdr->type) == STUN_FINGERPRINT) {
+  if (ntohs(attr_hdr->type) == STUN_ATTR_FINGERPRINT) {
     uint32_t value;
-    const struct stun_attr_uint32 *attr_uint32 =
-        (const struct stun_attr_uint32 *)attr_hdr;
+    const stun_attr_uint32 *attr_uint32 =
+        (const stun_attr_uint32 *)attr_hdr;
     p_end = (uint8_t*)attr_hdr;
     p = (uint8_t*)msg_hdr;
     value = crc32(0, p, p_end - p) ^ STUN_XOR_FINGERPRINT;
@@ -492,35 +492,35 @@ int stun_msg_verify(const struct stun_msg_hdr *msg_hdr, size_t msg_size) {
   return 1; /* all is well */
 }
 
-size_t stun_attr_len(const struct stun_attr_hdr *attr_hdr) {
+size_t stun_attr_len(const stun_attr_hdr *attr_hdr) {
   return ntohs(attr_hdr->length);
 }
 
-size_t stun_attr_block_len(const struct stun_attr_hdr *attr_hdr) {
+size_t stun_attr_block_len(const stun_attr_hdr *attr_hdr) {
   return sizeof(*attr_hdr) + ((stun_attr_len(attr_hdr) + 3) & (~3));
 }
 
-uint16_t stun_attr_type(const struct stun_attr_hdr *attr_hdr) {
+uint16_t stun_attr_type(const stun_attr_hdr *attr_hdr) {
   return ntohs(attr_hdr->type);
 }
 
-struct stun_attr_hdr *stun_msg_next_attr(struct stun_msg_hdr *msg_hdr,
-                                         struct stun_attr_hdr *attr_hdr) {
+stun_attr_hdr *stun_msg_next_attr(stun_msg_hdr *msg_hdr,
+                                  stun_attr_hdr *attr_hdr) {
   uint8_t *p;
   uint8_t *p_end = stun_msg_end(msg_hdr);
   if (!attr_hdr) {
-    p = ((uint8_t*)msg_hdr) + sizeof(struct stun_msg_hdr);
+    p = ((uint8_t*)msg_hdr) + sizeof(stun_msg_hdr);
   } else {
     p = ((uint8_t*)attr_hdr) + stun_attr_block_len(attr_hdr);
   }
   if (p >= p_end)
     return NULL;
-  return (struct stun_attr_hdr *)p;
+  return (stun_attr_hdr *)p;
 }
 
-struct stun_attr_hdr *stun_msg_find_attr(struct stun_msg_hdr *msg_hdr,
-                                         uint16_t type) {
-  struct stun_attr_hdr *it = NULL;
+stun_attr_hdr *stun_msg_find_attr(stun_msg_hdr *msg_hdr,
+                                  uint16_t type) {
+  stun_attr_hdr *it = NULL;
   while ((it = stun_msg_next_attr(msg_hdr, it)) != NULL) {
     if (stun_attr_type(it) == type)
       break;
@@ -528,7 +528,7 @@ struct stun_attr_hdr *stun_msg_find_attr(struct stun_msg_hdr *msg_hdr,
   return it;
 }
 
-int stun_attr_sockaddr_read(const struct stun_attr_sockaddr *attr,
+int stun_attr_sockaddr_read(const stun_attr_sockaddr *attr,
                             struct sockaddr *addr) {
   if (attr->family == STUN_IPV4) {
     struct sockaddr_in *sin = (struct sockaddr_in *)addr;
@@ -549,8 +549,8 @@ int stun_attr_sockaddr_read(const struct stun_attr_sockaddr *attr,
   }
 }
 
-int stun_attr_xor_sockaddr_read(const struct stun_attr_sockaddr *attr,
-                                const struct stun_msg_hdr *msg_hdr,
+int stun_attr_xor_sockaddr_read(const stun_attr_sockaddr *attr,
+                                const stun_msg_hdr *msg_hdr,
                                 struct sockaddr *addr) {
   int status = stun_attr_sockaddr_read(attr, addr);
   if (status < STUN_OK)
@@ -576,55 +576,55 @@ int stun_attr_xor_sockaddr_read(const struct stun_attr_sockaddr *attr,
   return STUN_OK;
 }
 
-const uint8_t *stun_attr_varsize_read(const struct stun_attr_varsize *attr) {
+const void *stun_attr_varsize_read(const stun_attr_varsize *attr) {
   return attr->value;
 }
 
-uint8_t stun_attr_uint8_read(const struct stun_attr_uint8 *attr) {
+uint8_t stun_attr_uint8_read(const stun_attr_uint8 *attr) {
   return attr->value;
 }
 
-uint16_t stun_attr_uint16_read(const struct stun_attr_uint16 *attr) {
+uint16_t stun_attr_uint16_read(const stun_attr_uint16 *attr) {
   return ntohs(attr->value);
 }
 
-uint32_t stun_attr_uint32_read(const struct stun_attr_uint32 *attr) {
+uint32_t stun_attr_uint32_read(const stun_attr_uint32 *attr) {
   return ntohl(attr->value);
 }
 
-uint64_t stun_attr_uint64_read(const struct stun_attr_uint64 *attr) {
+uint64_t stun_attr_uint64_read(const stun_attr_uint64 *attr) {
   return ntohll(attr->value);
 }
 
-int stun_attr_errcode_status(const struct stun_attr_errcode *attr) {
+int stun_attr_errcode_status(const stun_attr_errcode *attr) {
   return attr->err_class * 100 + attr->err_code;
 }
 
-const char *stun_attr_errcode_reason(const struct stun_attr_errcode *attr) {
+const char *stun_attr_errcode_reason(const stun_attr_errcode *attr) {
   return attr->err_reason;
 }
 
-size_t stun_attr_errcode_reason_len(const struct stun_attr_errcode *attr) {
-  return stun_attr_len(&attr->hdr) - sizeof(struct stun_attr_hdr);
+size_t stun_attr_errcode_reason_len(const stun_attr_errcode *attr) {
+  return stun_attr_len(&attr->hdr) - sizeof(stun_attr_hdr);
 }
 
-size_t stun_attr_unknown_count(const struct stun_attr_unknown *attr) {
+size_t stun_attr_unknown_count(const stun_attr_unknown *attr) {
   return ntohs(attr->hdr.length) >> 1;
 }
 
-uint16_t stun_attr_unknown_get(const struct stun_attr_unknown *attr,
+uint16_t stun_attr_unknown_get(const stun_attr_unknown *attr,
                                size_t n) {
   if (n >= stun_attr_unknown_count(attr))
     return 0;
   return ntohs(attr->attrs[n]);
 }
 
-uint16_t *stun_attr_unknown_next(const struct stun_attr_unknown *attr,
+uint16_t *stun_attr_unknown_next(const stun_attr_unknown *attr,
                                  uint16_t *unk_it) {
   uint8_t *p;
-  uint8_t *p_end = stun_attr_end((struct stun_attr_hdr *)attr);
+  uint8_t *p_end = stun_attr_end((stun_attr_hdr *)attr);
   if (!unk_it) {
-    p = ((uint8_t*)attr) + sizeof(struct stun_attr_hdr);
+    p = ((uint8_t*)attr) + sizeof(stun_attr_hdr);
   } else {
     p = ((uint8_t*)unk_it) + sizeof(uint16_t);
   }
@@ -633,16 +633,16 @@ uint16_t *stun_attr_unknown_next(const struct stun_attr_unknown *attr,
   return (uint16_t *)p;
 }
 
-int stun_attr_msgint_check(struct stun_attr_msgint *msgint,
-                           struct stun_msg_hdr *msg_hdr,
+int stun_attr_msgint_check(stun_attr_msgint *msgint,
+                           stun_msg_hdr *msg_hdr,
                            const uint8_t *key, size_t key_len) {
   uint8_t *p = (uint8_t *)msg_hdr;
   uint8_t *p_end = stun_msg_end(msg_hdr) - STUN_ATTR_MSGINT_SIZE;
   uint16_t length;
   uint8_t digest[20];
   HMAC_SHA1_CTX ctx;
-  struct stun_attr_hdr *fingerprint =
-      stun_msg_find_attr(msg_hdr, STUN_FINGERPRINT);
+  stun_attr_hdr *fingerprint =
+      stun_msg_find_attr(msg_hdr, STUN_ATTR_FINGERPRINT);
   if (fingerprint) {
     length = htons(ntohs(msg_hdr->length) - STUN_ATTR_UINT32_SIZE);
     p_end -= STUN_ATTR_UINT32_SIZE;

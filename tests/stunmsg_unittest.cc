@@ -41,9 +41,11 @@ void PrintWord(const uint8_t *v, size_t size, std::ostream &out) {
   }
 }
 
-::testing::AssertionResult IsEqual(const uint8_t *a, const uint8_t *b,
+::testing::AssertionResult IsEqual(const void *vec_a, const void *vec_b,
                                    size_t size) {
   std::ostringstream out;
+  const uint8_t *a = reinterpret_cast<const uint8_t*>(vec_a);
+  const uint8_t *b = reinterpret_cast<const uint8_t*>(vec_b);
   size_t i, errors = 0;
   for (i = 0; i < size; i += 4) {
     size_t len = 4;
@@ -161,13 +163,13 @@ TEST(StunMsgEncode, RFC5769SampleRequest) {
 
   stun_msg_hdr *msg_hdr = (stun_msg_hdr *)buffer;
   stun_msg_hdr_init(msg_hdr, STUN_BINDING_REQUEST, tsx_id);  
-  stun_attr_varsize_add(msg_hdr, STUN_SOFTWARE, (uint8_t*)software_name,
+  stun_attr_varsize_add(msg_hdr, STUN_ATTR_SOFTWARE, software_name,
         sizeof(software_name)-1, ' ');
-  stun_attr_uint32_add(msg_hdr, STUN_PRIORITY, 0x6e0001fful);
-  stun_attr_uint64_add(msg_hdr, STUN_ICE_CONTROLLED, 0x932ff9b151263b36ull);
-  stun_attr_varsize_add(msg_hdr, STUN_USERNAME, (uint8_t*)username,
+  stun_attr_uint32_add(msg_hdr, STUN_ATTR_PRIORITY, 0x6e0001fful);
+  stun_attr_uint64_add(msg_hdr, STUN_ATTR_ICE_CONTROLLED, 0x932ff9b151263b36ull);
+  stun_attr_varsize_add(msg_hdr, STUN_ATTR_USERNAME, username,
         sizeof(username)-1, ' ');
-  stun_attr_msgint_add(msg_hdr, (uint8_t*)password, sizeof(password)-1);
+  stun_attr_msgint_add(msg_hdr, password, sizeof(password)-1);
   stun_attr_fingerprint_add(msg_hdr);
 
   EXPECT_TRUE(IsEqual(expected_result, buffer,
@@ -179,33 +181,34 @@ TEST(StunMsgEncode, RFC5769SampleRequest) {
   EXPECT_EQ(sizeof(expected_result), stun_msg_len(msg_hdr));
 
   stun_attr_hdr *attr_hdr = stun_msg_next_attr(msg_hdr, NULL);
-  EXPECT_EQ(STUN_SOFTWARE, stun_attr_type(attr_hdr));
+  EXPECT_EQ(STUN_ATTR_SOFTWARE, stun_attr_type(attr_hdr));
   ASSERT_EQ(sizeof(software_name)-1, stun_attr_len(attr_hdr));
-  const uint8_t* data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
-  EXPECT_TRUE(IsEqual(data, (uint8_t*)software_name, sizeof(software_name)-1));
+  const void* data = (uint8_t*)stun_attr_varsize_read(
+    (stun_attr_varsize*)attr_hdr);
+  EXPECT_TRUE(IsEqual(data, software_name, sizeof(software_name)-1));
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_PRIORITY, stun_attr_type(attr_hdr));
+  EXPECT_EQ(STUN_ATTR_PRIORITY, stun_attr_type(attr_hdr));
   EXPECT_EQ(0x6e0001fful, stun_attr_uint32_read((stun_attr_uint32*)attr_hdr));
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_ICE_CONTROLLED, stun_attr_type(attr_hdr));
+  EXPECT_EQ(STUN_ATTR_ICE_CONTROLLED, stun_attr_type(attr_hdr));
   EXPECT_EQ(0x932ff9b151263b36ull,
       stun_attr_uint64_read((stun_attr_uint64*)attr_hdr));
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_USERNAME, stun_attr_type(attr_hdr));
+  EXPECT_EQ(STUN_ATTR_USERNAME, stun_attr_type(attr_hdr));
   ASSERT_EQ(sizeof(username)-1, stun_attr_len(attr_hdr));
   data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
-  EXPECT_TRUE(IsEqual(data, (uint8_t*)username, sizeof(username)-1));
+  EXPECT_TRUE(IsEqual(data, username, sizeof(username)-1));
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_MESSAGE_INTEGRITY, stun_attr_type(attr_hdr));
+  EXPECT_EQ(STUN_ATTR_MESSAGE_INTEGRITY, stun_attr_type(attr_hdr));
   EXPECT_EQ(1, stun_attr_msgint_check((stun_attr_msgint*)attr_hdr, msg_hdr,
       (uint8_t*)password, sizeof(password)-1));
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_FINGERPRINT, stun_attr_type(attr_hdr));
+  EXPECT_EQ(STUN_ATTR_FINGERPRINT, stun_attr_type(attr_hdr));
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
   EXPECT_EQ(NULL, attr_hdr);
@@ -261,11 +264,11 @@ TEST(StunMsgEncode, RFC5769SampleIPv4Response) {
       sizeof(expected_result)));
 
   stun_msg_hdr_init(msg_hdr, STUN_BINDING_RESPONSE, tsx_id);
-  stun_attr_varsize_add(msg_hdr, STUN_SOFTWARE, (uint8_t*)software_name,
+  stun_attr_varsize_add(msg_hdr, STUN_ATTR_SOFTWARE, software_name,
       sizeof(software_name)-1, ' ');
-  stun_attr_xor_sockaddr_add(msg_hdr, STUN_XOR_MAPPED_ADDRESS,
+  stun_attr_xor_sockaddr_add(msg_hdr, STUN_ATTR_XOR_MAPPED_ADDRESS,
       (sockaddr*)&ipv4);
-  stun_attr_msgint_add(msg_hdr, (uint8_t*)password, sizeof(password)-1);
+  stun_attr_msgint_add(msg_hdr, password, sizeof(password)-1);
   stun_attr_fingerprint_add(msg_hdr);
 
   EXPECT_TRUE(IsEqual(expected_result, buffer,
@@ -277,13 +280,13 @@ TEST(StunMsgEncode, RFC5769SampleIPv4Response) {
   EXPECT_EQ(sizeof(expected_result), stun_msg_len(msg_hdr));
 
   stun_attr_hdr *attr_hdr = stun_msg_next_attr(msg_hdr, NULL);
-  EXPECT_EQ(STUN_SOFTWARE, stun_attr_type(attr_hdr));
+  EXPECT_EQ(STUN_ATTR_SOFTWARE, stun_attr_type(attr_hdr));
   ASSERT_EQ(sizeof(software_name)-1, stun_attr_len(attr_hdr));
-  const uint8_t* data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
-  EXPECT_TRUE(IsEqual(data, (uint8_t*)software_name, sizeof(software_name)-1));
+  const void* data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
+  EXPECT_TRUE(IsEqual(data, software_name, sizeof(software_name)-1));
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_XOR_MAPPED_ADDRESS, stun_attr_type(attr_hdr));
+  EXPECT_EQ(STUN_ATTR_XOR_MAPPED_ADDRESS, stun_attr_type(attr_hdr));
   sockaddr_in test_addr;
   memset(&test_addr, 0, sizeof(test_addr));
   EXPECT_EQ(STUN_OK, stun_attr_xor_sockaddr_read(
@@ -294,12 +297,12 @@ TEST(StunMsgEncode, RFC5769SampleIPv4Response) {
       sizeof(ipv4.sin_addr)));
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_MESSAGE_INTEGRITY, stun_attr_type(attr_hdr));
+  EXPECT_EQ(STUN_ATTR_MESSAGE_INTEGRITY, stun_attr_type(attr_hdr));
   EXPECT_EQ(1, stun_attr_msgint_check((stun_attr_msgint*)attr_hdr, msg_hdr,
       (uint8_t*)password, sizeof(password)-1));
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_FINGERPRINT, stun_attr_type(attr_hdr));
+  EXPECT_EQ(STUN_ATTR_FINGERPRINT, stun_attr_type(attr_hdr));
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
   EXPECT_EQ(NULL, attr_hdr);
@@ -358,11 +361,11 @@ TEST(StunMsgEncode, RFC5769SampleIPv6Response) {
       sizeof(expected_result)));
   
   stun_msg_hdr_init(msg_hdr, STUN_BINDING_RESPONSE, tsx_id);
-  stun_attr_varsize_add(msg_hdr, STUN_SOFTWARE, (uint8_t*)software_name,
+  stun_attr_varsize_add(msg_hdr, STUN_ATTR_SOFTWARE, software_name,
       sizeof(software_name)-1, ' ');
-  stun_attr_xor_sockaddr_add(msg_hdr, STUN_XOR_MAPPED_ADDRESS,
+  stun_attr_xor_sockaddr_add(msg_hdr, STUN_ATTR_XOR_MAPPED_ADDRESS,
       (sockaddr *)&ipv6);
-  stun_attr_msgint_add(msg_hdr, (uint8_t*)password, sizeof(password)-1);
+  stun_attr_msgint_add(msg_hdr, password, sizeof(password)-1);
   stun_attr_fingerprint_add(msg_hdr);
 
   EXPECT_TRUE(IsEqual(expected_result, buffer,
@@ -374,13 +377,13 @@ TEST(StunMsgEncode, RFC5769SampleIPv6Response) {
   EXPECT_EQ(sizeof(expected_result), stun_msg_len(msg_hdr));
 
   stun_attr_hdr *attr_hdr = stun_msg_next_attr(msg_hdr, NULL);
-  EXPECT_EQ(STUN_SOFTWARE, stun_attr_type(attr_hdr));
+  EXPECT_EQ(STUN_ATTR_SOFTWARE, stun_attr_type(attr_hdr));
   ASSERT_EQ(sizeof(software_name)-1, stun_attr_len(attr_hdr));
-  const uint8_t* data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
-  EXPECT_TRUE(IsEqual(data, (uint8_t*)software_name, sizeof(software_name)-1));
+  const void* data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
+  EXPECT_TRUE(IsEqual(data, software_name, sizeof(software_name)-1));
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_XOR_MAPPED_ADDRESS, stun_attr_type(attr_hdr));
+  EXPECT_EQ(STUN_ATTR_XOR_MAPPED_ADDRESS, stun_attr_type(attr_hdr));
   sockaddr_in6 test_addr;
   memset(&test_addr, 0, sizeof(test_addr));
   EXPECT_EQ(STUN_OK, stun_attr_xor_sockaddr_read(
@@ -391,12 +394,12 @@ TEST(StunMsgEncode, RFC5769SampleIPv6Response) {
       sizeof(ipv6.sin6_addr)));
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_MESSAGE_INTEGRITY, stun_attr_type(attr_hdr));
+  EXPECT_EQ(STUN_ATTR_MESSAGE_INTEGRITY, stun_attr_type(attr_hdr));
   EXPECT_EQ(1, stun_attr_msgint_check((stun_attr_msgint*)attr_hdr, msg_hdr,
       (uint8_t*)password, sizeof(password)-1));
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_FINGERPRINT, stun_attr_type(attr_hdr));
+  EXPECT_EQ(STUN_ATTR_FINGERPRINT, stun_attr_type(attr_hdr));
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
   EXPECT_EQ(NULL, attr_hdr);
@@ -466,11 +469,11 @@ TEST(StunMsgEncode, RFC5769SampleRequestLongTerm) {
       sizeof(expected_result)));
   
   stun_msg_hdr_init(msg_hdr, STUN_BINDING_REQUEST, tsx_id);
-  stun_attr_varsize_add(msg_hdr, STUN_USERNAME, (uint8_t*)username,
+  stun_attr_varsize_add(msg_hdr, STUN_ATTR_USERNAME, username,
       sizeof(username)-1, 0);
-  stun_attr_varsize_add(msg_hdr, STUN_NONCE, (uint8_t*)nonce,
+  stun_attr_varsize_add(msg_hdr, STUN_ATTR_NONCE, nonce,
       sizeof(nonce)-1, 0);
-  stun_attr_varsize_add(msg_hdr, STUN_REALM, (uint8_t*)realm,
+  stun_attr_varsize_add(msg_hdr, STUN_ATTR_REALM, realm,
       sizeof(realm)-1, 0);
   stun_attr_msgint_add(msg_hdr, key, sizeof(key));
 
@@ -483,25 +486,25 @@ TEST(StunMsgEncode, RFC5769SampleRequestLongTerm) {
   EXPECT_EQ(sizeof(expected_result), stun_msg_len(msg_hdr));
 
   stun_attr_hdr *attr_hdr = stun_msg_next_attr(msg_hdr, NULL);
-  EXPECT_EQ(STUN_USERNAME, stun_attr_type(attr_hdr));
+  EXPECT_EQ(STUN_ATTR_USERNAME, stun_attr_type(attr_hdr));
   ASSERT_EQ(sizeof(username)-1, stun_attr_len(attr_hdr));
-  const uint8_t* data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
-  EXPECT_TRUE(IsEqual(data, (uint8_t*)username, sizeof(username)-1));
+  const void* data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
+  EXPECT_TRUE(IsEqual(data, username, sizeof(username)-1));
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_NONCE, stun_attr_type(attr_hdr));
+  EXPECT_EQ(STUN_ATTR_NONCE, stun_attr_type(attr_hdr));
   ASSERT_EQ(sizeof(nonce)-1, stun_attr_len(attr_hdr));
   data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
-  EXPECT_TRUE(IsEqual(data, (uint8_t*)nonce, sizeof(nonce)-1));
+  EXPECT_TRUE(IsEqual(data, nonce, sizeof(nonce)-1));
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_REALM, stun_attr_type(attr_hdr));
+  EXPECT_EQ(STUN_ATTR_REALM, stun_attr_type(attr_hdr));
   ASSERT_EQ(sizeof(realm)-1, stun_attr_len(attr_hdr));
   data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
-  EXPECT_TRUE(IsEqual(data, (uint8_t*)realm, sizeof(realm)-1));
+  EXPECT_TRUE(IsEqual(data, realm, sizeof(realm)-1));
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_MESSAGE_INTEGRITY, stun_attr_type(attr_hdr));
+  EXPECT_EQ(STUN_ATTR_MESSAGE_INTEGRITY, stun_attr_type(attr_hdr));
   EXPECT_EQ(1, stun_attr_msgint_check((stun_attr_msgint*)attr_hdr, msg_hdr,
       key, sizeof(key)));
 
@@ -558,17 +561,17 @@ TEST(StunMsgEncode, ErrorResponse) {
   EXPECT_EQ(sizeof(expected_result), stun_msg_len(msg_hdr));
 
   stun_attr_hdr *attr_hdr = stun_msg_next_attr(msg_hdr, NULL);
-  EXPECT_EQ(STUN_ERROR_CODE, stun_attr_type(attr_hdr));
+  EXPECT_EQ(STUN_ATTR_ERROR_CODE, stun_attr_type(attr_hdr));
   stun_attr_errcode *attr_errcode = (stun_attr_errcode *)attr_hdr;
   EXPECT_EQ(420, stun_attr_errcode_status(attr_errcode));
   ASSERT_EQ(sizeof(reason_phrase)-1,
       stun_attr_errcode_reason_len(attr_errcode));
-  EXPECT_TRUE(IsEqual((uint8_t*)reason_phrase,
-      (uint8_t*)stun_attr_errcode_reason(attr_errcode),
+  EXPECT_TRUE(IsEqual(reason_phrase,
+      stun_attr_errcode_reason(attr_errcode),
       sizeof(reason_phrase)-1));
 
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_UNKNOWN_ATTRIBUTES, stun_attr_type(attr_hdr));
+  EXPECT_EQ(STUN_ATTR_UNKNOWN_ATTRIBUTES, stun_attr_type(attr_hdr));
   stun_attr_unknown *attr_unk = (stun_attr_unknown *)attr_hdr;
   ASSERT_EQ(ARRAY_SIZE(unknown), stun_attr_unknown_count(attr_unk));
   for (size_t i = 0; i < ARRAY_SIZE(unknown); i++) {
