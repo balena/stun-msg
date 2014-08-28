@@ -296,7 +296,7 @@ uint16_t stun_msg_type(const stun_msg_hdr *msg_hdr);
 size_t stun_msg_len(const stun_msg_hdr *msg_hdr);
 
 /* Gets the STUN message end. */
-uint8_t *stun_msg_end(stun_msg_hdr *msg_hdr);
+const uint8_t *stun_msg_end(const stun_msg_hdr *msg_hdr);
 
 /* Initializes a generic attribute header */
 void stun_attr_hdr_init(stun_attr_hdr *attr_hdr, uint16_t type, uint16_t len);
@@ -488,13 +488,14 @@ uint16_t stun_attr_type(const stun_attr_hdr *attr_hdr);
  *
  * Returns the next STUN attribute, or NULL past the last one.
  */
-stun_attr_hdr *stun_msg_next_attr(stun_msg_hdr *msg_hdr,
-                                  stun_attr_hdr *attr_hdr);
+const stun_attr_hdr *stun_msg_next_attr(const stun_msg_hdr *msg_hdr,
+                                        const stun_attr_hdr *attr_hdr);
 
 /* Finds a specific STUN attribute in the provided message. It will perform
  * a linear search over the available attributes.
  */
-stun_attr_hdr *stun_msg_find_attr(stun_msg_hdr *msg_hdr, uint16_t type);
+const stun_attr_hdr *stun_msg_find_attr(const stun_msg_hdr *msg_hdr,
+                                        uint16_t type);
 
 /* Reads a sockaddr attribute. Returns error case the address family
  * is unknown (should be STUN_IPV4 or STUN_IPV6).
@@ -544,8 +545,8 @@ uint16_t stun_attr_unknown_get(const stun_attr_unknown *attr, size_t n);
 
 /* Checks the MESSAGE-INTEGRITY attribute.
  */
-int stun_attr_msgint_check(stun_attr_msgint *msgint,
-                           stun_msg_hdr *msg_hdr,
+int stun_attr_msgint_check(const stun_attr_msgint *msgint,
+                           const stun_msg_hdr *msg_hdr,
                            const uint8_t *key, size_t key_len);
 
 /* Calculates the key used for long term credentials for using with the

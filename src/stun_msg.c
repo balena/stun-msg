@@ -151,7 +151,7 @@ uint16_t stun_msg_type(const stun_msg_hdr *msg_hdr) {
   return ntohs(msg_hdr->type);
 }
 
-uint8_t *stun_msg_end(stun_msg_hdr *msg_hdr) {
+const uint8_t *stun_msg_end(const stun_msg_hdr *msg_hdr) {
   uint8_t *begin = (uint8_t *)msg_hdr;
   return begin + stun_msg_len(msg_hdr);
 }
@@ -504,10 +504,10 @@ uint16_t stun_attr_type(const stun_attr_hdr *attr_hdr) {
   return ntohs(attr_hdr->type);
 }
 
-stun_attr_hdr *stun_msg_next_attr(stun_msg_hdr *msg_hdr,
-                                  stun_attr_hdr *attr_hdr) {
+const stun_attr_hdr *stun_msg_next_attr(const stun_msg_hdr *msg_hdr,
+                                        const stun_attr_hdr *attr_hdr) {
   uint8_t *p;
-  uint8_t *p_end = stun_msg_end(msg_hdr);
+  const uint8_t *p_end = stun_msg_end(msg_hdr);
   if (!attr_hdr) {
     p = ((uint8_t*)msg_hdr) + sizeof(stun_msg_hdr);
   } else {
@@ -518,9 +518,9 @@ stun_attr_hdr *stun_msg_next_attr(stun_msg_hdr *msg_hdr,
   return (stun_attr_hdr *)p;
 }
 
-stun_attr_hdr *stun_msg_find_attr(stun_msg_hdr *msg_hdr,
-                                  uint16_t type) {
-  stun_attr_hdr *it = NULL;
+const stun_attr_hdr *stun_msg_find_attr(const stun_msg_hdr *msg_hdr,
+                                        uint16_t type) {
+  const stun_attr_hdr *it = NULL;
   while ((it = stun_msg_next_attr(msg_hdr, it)) != NULL) {
     if (stun_attr_type(it) == type)
       break;
@@ -634,15 +634,15 @@ uint16_t *stun_attr_unknown_next(const stun_attr_unknown *attr,
   return (uint16_t *)p;
 }
 
-int stun_attr_msgint_check(stun_attr_msgint *msgint,
-                           stun_msg_hdr *msg_hdr,
+int stun_attr_msgint_check(const stun_attr_msgint *msgint,
+                           const stun_msg_hdr *msg_hdr,
                            const uint8_t *key, size_t key_len) {
   uint8_t *p = (uint8_t *)msg_hdr;
-  uint8_t *p_end = stun_msg_end(msg_hdr) - STUN_ATTR_MSGINT_SIZE;
+  const uint8_t *p_end = stun_msg_end(msg_hdr) - STUN_ATTR_MSGINT_SIZE;
   uint16_t length;
   uint8_t digest[20];
   HMAC_SHA1_CTX ctx;
-  stun_attr_hdr *fingerprint =
+  const stun_attr_hdr *fingerprint =
       stun_msg_find_attr(msg_hdr, STUN_ATTR_FINGERPRINT);
   if (fingerprint) {
     length = htons(ntohs(msg_hdr->length) - STUN_ATTR_UINT32_SIZE);
