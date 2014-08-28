@@ -25,10 +25,12 @@ include_directories(gtest/include src)
 
 add_executable(stunmsg_tests
   tests/stunmsg_unittest.cc
+  tests/stunmsgpp_unittest.cc
   tests/sha1_unittest.cc
   tests/hmac_sha1_unittest.cc
   tests/md5_unittest.cc
   tests/crc32_unittest.cc
+  include/stun++/message.h
 )
 
 add_dependencies(stunmsg_tests stunmsg gtest gtest_main)
