@@ -19,8 +19,402 @@ struct sockaddr_in;
 struct sockaddr_in6;
 
 namespace stun {
-
 namespace attribute {
+namespace type {
+
+enum attribute_type {
+  mapped_address      = STUN_ATTR_MAPPED_ADDRESS,
+  response_address    = STUN_ATTR_RESPONSE_ADDRESS,
+  change_request      = STUN_ATTR_CHANGE_REQUEST,
+  source_address      = STUN_ATTR_SOURCE_ADDRESS,
+  changed_address     = STUN_ATTR_CHANGED_ADDRESS,
+  username            = STUN_ATTR_USERNAME,
+  password            = STUN_ATTR_PASSWORD,
+  message_integrity   = STUN_ATTR_MESSAGE_INTEGRITY,
+  error_code          = STUN_ATTR_ERROR_CODE,
+  unknown_attributes  = STUN_ATTR_UNKNOWN_ATTRIBUTES,
+  reflected_from      = STUN_ATTR_REFLECTED_FROM,
+  channel_number      = STUN_ATTR_CHANNEL_NUMBER,
+  lifetime            = STUN_ATTR_LIFETIME,
+  bandwidth           = STUN_ATTR_BANDWIDTH,
+  xor_peer_address    = STUN_ATTR_XOR_PEER_ADDRESS,
+  data                = STUN_ATTR_DATA,
+  realm               = STUN_ATTR_REALM,
+  nonce               = STUN_ATTR_NONCE,
+  xor_relayed_address = STUN_ATTR_XOR_RELAYED_ADDRESS,
+  req_address_family  = STUN_ATTR_REQ_ADDRESS_FAMILY,
+  even_port           = STUN_ATTR_EVEN_PORT,
+  requested_transport = STUN_ATTR_REQUESTED_TRANSPORT,
+  dont_fragment       = STUN_ATTR_DONT_FRAGMENT,
+  xor_mapped_address  = STUN_ATTR_XOR_MAPPED_ADDRESS,
+  timer_val           = STUN_ATTR_TIMER_VAL,
+  reservation_token   = STUN_ATTR_RESERVATION_TOKEN,
+  priority            = STUN_ATTR_PRIORITY,
+  use_candidate       = STUN_ATTR_USE_CANDIDATE,
+  padding             = STUN_ATTR_PADDING,
+  response_port       = STUN_ATTR_RESPONSE_PORT,
+  connection_id       = STUN_ATTR_CONNECTION_ID,
+  software            = STUN_ATTR_SOFTWARE,
+  alternate_server    = STUN_ATTR_ALTERNATE_SERVER,
+  fingerprint         = STUN_ATTR_FINGERPRINT,
+  ice_controlled      = STUN_ATTR_ICE_CONTROLLED,
+  ice_controlling     = STUN_ATTR_ICE_CONTROLLING,
+  response_origin     = STUN_ATTR_RESPONSE_ORIGIN,
+  other_address       = STUN_ATTR_OTHER_ADDRESS,
+};
+
+} // namespace type
+
+
+namespace decoding_bits {
+
+template<typename AttributeType>
+class attribute_base {
+ public:
+  attribute_base(const stun_msg_hdr* msg_hdr,
+                 const stun_attr_hdr* attr_hdr)
+      : msg_hdr_(msg_hdr),
+        attr_(reinterpret_cast<const AttributeType*>(attr_hdr)) {}
+ protected:
+  const stun_msg_hdr* msg_hdr_;
+  const AttributeType* attr_;
+};
+
+class socket_address : public attribute_base<stun_attr_sockaddr> {
+ public:
+  socket_address(const stun_msg_hdr* msg_hdr,
+                 const stun_attr_hdr* attr_hdr)
+      : attribute_base(msg_hdr, attr_hdr) {}
+  bool to_sockaddr(sockaddr *addr) {
+    return stun_attr_sockaddr_read(attr_, addr)
+           ? true : false;
+  }
+};
+
+class xor_socket_address : public attribute_base<stun_attr_xor_sockaddr> {
+ public:
+  xor_socket_address(const stun_msg_hdr* msg_hdr,
+                     const stun_attr_hdr* attr_hdr)
+      : attribute_base(msg_hdr, attr_hdr) {}
+  bool to_sockaddr(sockaddr *addr) {
+    return stun_attr_xor_sockaddr_read(attr_, msg_hdr_, addr)
+           ? true : false;
+  }
+};
+
+class string : public attribute_base<stun_attr_varsize> {
+ public:
+  string(const stun_msg_hdr* msg_hdr,
+         const stun_attr_hdr* attr_hdr)
+      : attribute_base(msg_hdr, attr_hdr) {}
+  std::string to_string() const {
+    return std::string(
+        reinterpret_cast<const char*>(stun_attr_varsize_read(attr_)),
+            stun_attr_len(&attr_->hdr));
+  }
+};
+
+class data_type : public attribute_base<stun_attr_varsize> {
+ public:
+  data_type(const stun_msg_hdr* msg_hdr,
+            const stun_attr_hdr* attr_hdr)
+      : attribute_base(msg_hdr, attr_hdr) {}
+  size_t size() const {
+    return stun_attr_len(&attr_->hdr);
+  }
+  const uint8_t *data() const {
+    return reinterpret_cast<const uint8_t*>(attr_) + sizeof(stun_attr_hdr);
+  }
+};
+
+class u8 : public attribute_base<stun_attr_uint8> {
+ public:
+  u8(const stun_msg_hdr* msg_hdr,
+     const stun_attr_hdr* attr_hdr)
+      : attribute_base(msg_hdr, attr_hdr) {}
+  uint8_t value() const {
+    return stun_attr_uint8_read(attr_);
+  }
+};
+
+class u16 : public attribute_base<stun_attr_uint16> {
+ public:
+  u16(const stun_msg_hdr* msg_hdr,
+      const stun_attr_hdr* attr_hdr)
+      : attribute_base(msg_hdr, attr_hdr) {}
+  uint16_t value() const {
+    return stun_attr_uint16_read(attr_);
+  }
+};
+
+class u32 : public attribute_base<stun_attr_uint32> {
+ public:
+  u32(const stun_msg_hdr* msg_hdr,
+      const stun_attr_hdr* attr_hdr)
+      : attribute_base(msg_hdr, attr_hdr) {}
+  uint32_t value() const {
+    return stun_attr_uint32_read(attr_);
+  }
+};
+
+class u64 : public attribute_base<stun_attr_uint64> {
+ public:
+  u64(const stun_msg_hdr* msg_hdr,
+      const stun_attr_hdr* attr_hdr)
+      : attribute_base(msg_hdr, attr_hdr) {}
+  uint64_t value() const {
+    return stun_attr_uint64_read(attr_);
+  }
+};
+
+class errcode : public attribute_base<stun_attr_errcode> {
+ public:
+  errcode(const stun_msg_hdr* msg_hdr,
+          const stun_attr_hdr* attr_hdr)
+      : attribute_base(msg_hdr, attr_hdr) {}
+  int status_code() {
+    return stun_attr_errcode_status(attr_);
+  }
+  std::string reason_phrase() const {
+    const char *str = stun_attr_errcode_reason(attr_);
+    size_t str_len = stun_attr_errcode_reason_len(attr_);
+    return std::string(str, str_len);
+  }
+};
+
+class unknown : public attribute_base<stun_attr_unknown> {
+ public:
+  unknown(const stun_msg_hdr* msg_hdr,
+          const stun_attr_hdr* attr_hdr)
+      : attribute_base(msg_hdr, attr_hdr) {}
+  size_t size() const {
+    return stun_attr_unknown_count(attr_);
+  }
+  uint16_t operator[](size_t n) const {
+    return stun_attr_unknown_get(attr_, n);
+  }
+};
+
+class msgint : public attribute_base<stun_attr_msgint> {
+ public:
+  msgint(const stun_msg_hdr* msg_hdr,
+         const stun_attr_hdr* attr_hdr)
+      : attribute_base(msg_hdr, attr_hdr) {}
+  template<typename char_type>
+  bool check_integrity(const char_type *key_begin,
+                       const char_type *key_end) const {
+    return stun_attr_msgint_check(attr_, msg_hdr_,
+        reinterpret_cast<const uint8_t*>(key_begin),
+            key_end - key_begin) ? true : false;
+  }
+  bool check_integrity(const std::string &key) const {
+    return check_integrity(key.data(), key.data() + key.size());
+  }
+};
+
+} // namespace decoding_bits
+
+
+namespace decoding {
+
+#define STUNXX_ATTRIBUTE_STRING_LIKE(name)                                    \
+typedef decoding_bits::string name;
+
+#define STUNXX_ATTRIBUTE_DATA_LIKE(name)                                      \
+typedef decoding_bits::data_type name;
+
+#define STUNXX_ATTRIBUTE_SOCKADDR_LIKE(name)                                  \
+typedef decoding_bits::socket_address name;
+
+#define STUNXX_ATTRIBUTE_XOR_SOCKADDR_LIKE(name)                              \
+typedef decoding_bits::xor_socket_address name;
+
+#define STUNXX_ATTRIBUTE_EMPTY_LIKE(name)
+
+#define STUNXX_ATTRIBUTE_UINT8_LIKE(name)                                     \
+typedef decoding_bits::u8 name;
+
+#define STUNXX_ATTRIBUTE_UINT8_PAD_LIKE(name)                                 \
+typedef decoding_bits::u8 name;
+
+#define STUNXX_ATTRIBUTE_UINT16_LIKE(name)                                    \
+typedef decoding_bits::u16 name;
+
+#define STUNXX_ATTRIBUTE_UINT16_PAD_LIKE(name)                                \
+typedef decoding_bits::u16 name;
+
+#define STUNXX_ATTRIBUTE_UINT32_LIKE(name)                                    \
+typedef decoding_bits::u32 name;
+
+#define STUNXX_ATTRIBUTE_UINT64_LIKE(name)                                    \
+typedef decoding_bits::u64 name;
+
+STUNXX_ATTRIBUTE_SOCKADDR_LIKE(mapped_address)
+STUNXX_ATTRIBUTE_SOCKADDR_LIKE(response_address)
+STUNXX_ATTRIBUTE_UINT32_LIKE(change_request)
+STUNXX_ATTRIBUTE_SOCKADDR_LIKE(source_address)
+STUNXX_ATTRIBUTE_SOCKADDR_LIKE(changed_address)
+STUNXX_ATTRIBUTE_STRING_LIKE(username)
+STUNXX_ATTRIBUTE_STRING_LIKE(password)
+STUNXX_ATTRIBUTE_SOCKADDR_LIKE(reflected_from)
+STUNXX_ATTRIBUTE_UINT32_LIKE(channel_number)
+STUNXX_ATTRIBUTE_UINT32_LIKE(lifetime)
+STUNXX_ATTRIBUTE_UINT32_LIKE(bandwidth)
+STUNXX_ATTRIBUTE_XOR_SOCKADDR_LIKE(xor_peer_address)
+STUNXX_ATTRIBUTE_DATA_LIKE(data)
+STUNXX_ATTRIBUTE_STRING_LIKE(realm)
+STUNXX_ATTRIBUTE_STRING_LIKE(nonce)
+STUNXX_ATTRIBUTE_XOR_SOCKADDR_LIKE(xor_relayed_address)
+STUNXX_ATTRIBUTE_UINT8_LIKE(req_address_family)
+STUNXX_ATTRIBUTE_UINT8_PAD_LIKE(even_port)
+STUNXX_ATTRIBUTE_UINT32_LIKE(requested_transport)
+STUNXX_ATTRIBUTE_EMPTY_LIKE(dont_fragment)
+STUNXX_ATTRIBUTE_XOR_SOCKADDR_LIKE(xor_mapped_address)
+STUNXX_ATTRIBUTE_UINT32_LIKE(timer_val)
+STUNXX_ATTRIBUTE_UINT64_LIKE(reservation_token)
+STUNXX_ATTRIBUTE_UINT32_LIKE(priority)
+STUNXX_ATTRIBUTE_EMPTY_LIKE(use_candidate)
+STUNXX_ATTRIBUTE_DATA_LIKE(padding)
+STUNXX_ATTRIBUTE_UINT16_PAD_LIKE(response_port)
+STUNXX_ATTRIBUTE_UINT32_LIKE(connection_id)
+STUNXX_ATTRIBUTE_STRING_LIKE(software)
+STUNXX_ATTRIBUTE_SOCKADDR_LIKE(alternate_server)
+STUNXX_ATTRIBUTE_UINT64_LIKE(ice_controlled)
+STUNXX_ATTRIBUTE_UINT64_LIKE(ice_controlling)
+STUNXX_ATTRIBUTE_SOCKADDR_LIKE(response_origin)
+STUNXX_ATTRIBUTE_SOCKADDR_LIKE(other_address)
+
+#undef STUNXX_ATTRIBUTE_STRING_LIKE
+#undef STUNXX_ATTRIBUTE_DATA_LIKE
+#undef STUNXX_ATTRIBUTE_SOCKADDR_LIKE
+#undef STUNXX_ATTRIBUTE_XOR_SOCKADDR_LIKE
+#undef STUNXX_ATTRIBUTE_EMPTY_LIKE
+#undef STUNXX_ATTRIBUTE_UINT8_LIKE
+#undef STUNXX_ATTRIBUTE_UINT8_PAD_LIKE
+#undef STUNXX_ATTRIBUTE_UINT16_LIKE
+#undef STUNXX_ATTRIBUTE_UINT16_PAD_LIKE
+#undef STUNXX_ATTRIBUTE_UINT32_LIKE
+#undef STUNXX_ATTRIBUTE_UINT64_LIKE
+
+} // namespace decoding
+
+
+namespace decoding_bits {
+
+template<type::attribute_type>
+struct traits;
+
+#define STUNXX_ATTRIBUTE_STRING_LIKE(name)                                    \
+template<>                                                                    \
+struct traits<type::name> {                                                   \
+  typedef decoding::name decoding_type;                                       \
+};
+
+#define STUNXX_ATTRIBUTE_DATA_LIKE(name)                                      \
+template<>                                                                    \
+struct traits<type::name> {                                                   \
+  typedef decoding::name decoding_type;                                       \
+};
+
+#define STUNXX_ATTRIBUTE_SOCKADDR_LIKE(name)                                  \
+template<>                                                                    \
+struct traits<type::name> {                                                   \
+  typedef decoding::name decoding_type;                                       \
+};
+
+#define STUNXX_ATTRIBUTE_XOR_SOCKADDR_LIKE(name)                              \
+template<>                                                                    \
+struct traits<type::name> {                                                   \
+  typedef decoding::name decoding_type;                                       \
+};
+
+#define STUNXX_ATTRIBUTE_EMPTY_LIKE(name)
+
+#define STUNXX_ATTRIBUTE_UINT8_LIKE(name)                                     \
+template<>                                                                    \
+struct traits<type::name> {                                                   \
+  typedef decoding::name decoding_type;                                       \
+};
+
+#define STUNXX_ATTRIBUTE_UINT8_PAD_LIKE(name)                                 \
+template<>                                                                    \
+struct traits<type::name> {                                                   \
+  typedef decoding::name decoding_type;                                       \
+};
+
+#define STUNXX_ATTRIBUTE_UINT16_LIKE(name)                                    \
+template<>                                                                    \
+struct traits<type::name> {                                                   \
+  typedef decoding::name decoding_type;                                       \
+};
+
+#define STUNXX_ATTRIBUTE_UINT16_PAD_LIKE(name)                                \
+template<>                                                                    \
+struct traits<type::name> {                                                   \
+  typedef decoding::name decoding_type;                                       \
+};
+
+#define STUNXX_ATTRIBUTE_UINT32_LIKE(name)                                    \
+template<>                                                                    \
+struct traits<type::name> {                                                   \
+  typedef decoding::name decoding_type;                                       \
+};
+
+#define STUNXX_ATTRIBUTE_UINT64_LIKE(name)                                    \
+template<>                                                                    \
+struct traits<type::name> {                                                   \
+  typedef decoding::name decoding_type;                                       \
+};
+
+STUNXX_ATTRIBUTE_SOCKADDR_LIKE(mapped_address)
+STUNXX_ATTRIBUTE_SOCKADDR_LIKE(response_address)
+STUNXX_ATTRIBUTE_UINT32_LIKE(change_request)
+STUNXX_ATTRIBUTE_SOCKADDR_LIKE(source_address)
+STUNXX_ATTRIBUTE_SOCKADDR_LIKE(changed_address)
+STUNXX_ATTRIBUTE_STRING_LIKE(username)
+STUNXX_ATTRIBUTE_STRING_LIKE(password)
+STUNXX_ATTRIBUTE_SOCKADDR_LIKE(reflected_from)
+STUNXX_ATTRIBUTE_UINT32_LIKE(channel_number)
+STUNXX_ATTRIBUTE_UINT32_LIKE(lifetime)
+STUNXX_ATTRIBUTE_UINT32_LIKE(bandwidth)
+STUNXX_ATTRIBUTE_XOR_SOCKADDR_LIKE(xor_peer_address)
+STUNXX_ATTRIBUTE_DATA_LIKE(data)
+STUNXX_ATTRIBUTE_STRING_LIKE(realm)
+STUNXX_ATTRIBUTE_STRING_LIKE(nonce)
+STUNXX_ATTRIBUTE_XOR_SOCKADDR_LIKE(xor_relayed_address)
+STUNXX_ATTRIBUTE_UINT8_LIKE(req_address_family)
+STUNXX_ATTRIBUTE_UINT8_PAD_LIKE(even_port)
+STUNXX_ATTRIBUTE_UINT32_LIKE(requested_transport)
+STUNXX_ATTRIBUTE_EMPTY_LIKE(dont_fragment)
+STUNXX_ATTRIBUTE_XOR_SOCKADDR_LIKE(xor_mapped_address)
+STUNXX_ATTRIBUTE_UINT32_LIKE(timer_val)
+STUNXX_ATTRIBUTE_UINT64_LIKE(reservation_token)
+STUNXX_ATTRIBUTE_UINT32_LIKE(priority)
+STUNXX_ATTRIBUTE_EMPTY_LIKE(use_candidate)
+STUNXX_ATTRIBUTE_DATA_LIKE(padding)
+STUNXX_ATTRIBUTE_UINT16_PAD_LIKE(response_port)
+STUNXX_ATTRIBUTE_UINT32_LIKE(connection_id)
+STUNXX_ATTRIBUTE_STRING_LIKE(software)
+STUNXX_ATTRIBUTE_SOCKADDR_LIKE(alternate_server)
+STUNXX_ATTRIBUTE_UINT64_LIKE(ice_controlled)
+STUNXX_ATTRIBUTE_UINT64_LIKE(ice_controlling)
+STUNXX_ATTRIBUTE_SOCKADDR_LIKE(response_origin)
+STUNXX_ATTRIBUTE_SOCKADDR_LIKE(other_address)
+
+#undef STUNXX_ATTRIBUTE_STRING_LIKE
+#undef STUNXX_ATTRIBUTE_DATA_LIKE
+#undef STUNXX_ATTRIBUTE_SOCKADDR_LIKE
+#undef STUNXX_ATTRIBUTE_XOR_SOCKADDR_LIKE
+#undef STUNXX_ATTRIBUTE_EMPTY_LIKE
+#undef STUNXX_ATTRIBUTE_UINT8_LIKE
+#undef STUNXX_ATTRIBUTE_UINT8_PAD_LIKE
+#undef STUNXX_ATTRIBUTE_UINT16_LIKE
+#undef STUNXX_ATTRIBUTE_UINT16_PAD_LIKE
+#undef STUNXX_ATTRIBUTE_UINT32_LIKE
+#undef STUNXX_ATTRIBUTE_UINT64_LIKE
+
+} // namespace decoding_bits
+
 
 class decoded {
  public:
@@ -43,88 +437,9 @@ class decoded {
     return attr_hdr_;
   }
 
-  const uint8_t *data() const {
-    return reinterpret_cast<const uint8_t*>(attr_hdr_) + sizeof(stun_attr_hdr);
-  }
-
-  size_t size() const {
-    return stun_attr_len(attr_hdr_);
-  }
-
-  bool to_sockaddr(struct sockaddr *addr) const {
-    return stun_attr_sockaddr_read(
-        reinterpret_cast<const stun_attr_sockaddr*>(attr_hdr_), addr)
-            ? true : false;
-  }
-
-  bool to_xor_sockaddr(struct sockaddr *addr) const {
-    return stun_attr_xor_sockaddr_read(
-        reinterpret_cast<const stun_attr_xor_sockaddr*>(attr_hdr_), msg_hdr_,
-            addr) ? true : false;
-  }
-
-  std::string to_string() const {
-    return std::string(reinterpret_cast<const char*>(data()), size());
-  }
-
-  uint8_t uint8_value() const {
-    return stun_attr_uint8_read(
-        reinterpret_cast<const stun_attr_uint8*>(attr_hdr_));
-  }
-
-  uint16_t uint16_value() const {
-    return stun_attr_uint16_read(
-        reinterpret_cast<const stun_attr_uint16*>(attr_hdr_));
-  }
-
-  uint32_t uint32_value() const {
-    return stun_attr_uint32_read(
-        reinterpret_cast<const stun_attr_uint32*>(attr_hdr_));
-  }
-
-  uint64_t uint64_value() const {
-    return stun_attr_uint64_read(
-        reinterpret_cast<const stun_attr_uint64*>(attr_hdr_));
-  }
-
-  int status_code() {
-    const stun_attr_errcode *errcode =
-        reinterpret_cast<const stun_attr_errcode *>(attr_hdr_);
-    return stun_attr_errcode_status(errcode);
-  }
-
-  std::string reason_phrase() const {
-    const stun_attr_errcode *errcode =
-        reinterpret_cast<const stun_attr_errcode *>(attr_hdr_);
-    const char *str = stun_attr_errcode_reason(errcode);
-    size_t str_len = stun_attr_errcode_reason_len(errcode);
-    return std::string(str, str_len);
-  }
-
-  size_t unknown_size() const {
-    const stun_attr_unknown *unknown =
-        reinterpret_cast<const stun_attr_unknown *>(attr_hdr_);
-    return stun_attr_unknown_count(unknown);
-  }
-
-  uint16_t unknown_get(size_t n) const {
-    const stun_attr_unknown *unknown =
-        reinterpret_cast<const stun_attr_unknown *>(attr_hdr_);
-    return stun_attr_unknown_get(unknown, n);
-  }
-
-  template<typename char_type>
-  bool check_integrity(const char_type *key_begin,
-                       const char_type *key_end) const {
-    const stun_attr_msgint *msgint =
-        reinterpret_cast<const stun_attr_msgint *>(attr_hdr_);
-    return stun_attr_msgint_check(msgint, msg_hdr_,
-        reinterpret_cast<const uint8_t*>(key_begin),
-            key_end - key_begin) ? true : false;
-  }
-
-  bool check_integrity(const std::string &key) const {
-    return check_integrity(key.data(), key.data() + key.size());
+  template<type::attribute_type T>
+  typename decoding_bits::traits<T>::decoding_type to() {
+    return decoding_bits::traits<T>::decoding_type(msg_hdr_, attr_hdr_);
   }
 
  private:
@@ -287,10 +602,10 @@ struct unknown {
   unknown(const uint16_t *begin, const uint16_t *end, uint8_t pad)
       : begin_(begin), end_(end), pad_(pad) {}
   size_t size() const {
-    return STUN_ATTR_UNKNOWN_SIZE((end_ - begin_) >> 1);
+    return STUN_ATTR_UNKNOWN_SIZE(end_ - begin_);
   }
   void append(stun_msg_hdr *msg_hdr) const {
-    stun_attr_unknown_add(msg_hdr, begin_, (end_ - begin_) >> 1, pad_);
+    stun_attr_unknown_add(msg_hdr, begin_, end_ - begin_, pad_);
   }
   const uint16_t *begin_;
   const uint16_t *end_;
@@ -321,52 +636,6 @@ struct fingerprint {
 };
 
 } // namespace bits
-
-namespace type {
-
-enum attribute_type {
-  mapped_address      = STUN_ATTR_MAPPED_ADDRESS,
-  response_address    = STUN_ATTR_RESPONSE_ADDRESS,
-  change_request      = STUN_ATTR_CHANGE_REQUEST,
-  source_address      = STUN_ATTR_SOURCE_ADDRESS,
-  changed_address     = STUN_ATTR_CHANGED_ADDRESS,
-  username            = STUN_ATTR_USERNAME,
-  password            = STUN_ATTR_PASSWORD,
-  message_integrity   = STUN_ATTR_MESSAGE_INTEGRITY,
-  error_code          = STUN_ATTR_ERROR_CODE,
-  unknown_attributes  = STUN_ATTR_UNKNOWN_ATTRIBUTES,
-  reflected_from      = STUN_ATTR_REFLECTED_FROM,
-  channel_number      = STUN_ATTR_CHANNEL_NUMBER,
-  lifetime            = STUN_ATTR_LIFETIME,
-  bandwidth           = STUN_ATTR_BANDWIDTH,
-  xor_peer_address    = STUN_ATTR_XOR_PEER_ADDRESS,
-  data                = STUN_ATTR_DATA,
-  realm               = STUN_ATTR_REALM,
-  nonce               = STUN_ATTR_NONCE,
-  xor_relayed_address = STUN_ATTR_XOR_RELAYED_ADDRESS,
-  req_address_family  = STUN_ATTR_REQ_ADDRESS_FAMILY,
-  even_port           = STUN_ATTR_EVEN_PORT,
-  requested_transport = STUN_ATTR_REQUESTED_TRANSPORT,
-  dont_fragment       = STUN_ATTR_DONT_FRAGMENT,
-  xor_mapped_address  = STUN_ATTR_XOR_MAPPED_ADDRESS,
-  timer_val           = STUN_ATTR_TIMER_VAL,
-  reservation_token   = STUN_ATTR_RESERVATION_TOKEN,
-  priority            = STUN_ATTR_PRIORITY,
-  use_candidate       = STUN_ATTR_USE_CANDIDATE,
-  padding             = STUN_ATTR_PADDING,
-  response_port       = STUN_ATTR_RESPONSE_PORT,
-  connection_id       = STUN_ATTR_CONNECTION_ID,
-  software            = STUN_ATTR_SOFTWARE,
-  alternate_server    = STUN_ATTR_ALTERNATE_SERVER,
-  fingerprint         = STUN_ATTR_FINGERPRINT,
-  ice_controlled      = STUN_ATTR_ICE_CONTROLLED,
-  ice_controlling     = STUN_ATTR_ICE_CONTROLLING,
-  response_origin     = STUN_ATTR_RESPONSE_ORIGIN,
-  other_address       = STUN_ATTR_OTHER_ADDRESS,
-};
-
-} // namespace type
-
 
 #define STUNXX_ATTRIBUTE_STRING_LIKE(name)                                    \
 bits::varsize<char> name(const char *data, uint8_t pad = 0) {                 \

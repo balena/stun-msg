@@ -93,14 +93,10 @@ TEST(StunMsgCxx, BasicBindingRequest) {
       sizeof(expected_result)));
 
   // Now decoding
-/*
-  msg_hdr = (stun_msg_hdr *)expected_result;
-  EXPECT_EQ(STUN_BINDING_REQUEST, stun_msg_type(msg_hdr));
-  EXPECT_EQ(sizeof(stun_msg_hdr), stun_msg_len(msg_hdr));
+  EXPECT_EQ(stun::message::binding_request, message.type());
 
-  stun_attr_hdr *attr_hdr = stun_msg_next_attr(msg_hdr, NULL);
-  EXPECT_EQ(NULL, attr_hdr);
-*/
+  stun::message::iterator i = message.begin();
+  ASSERT_TRUE(message.end() == i);
 }
 
 TEST(StunMsgCxx, RFC5769SampleRequest) {
@@ -155,19 +151,16 @@ TEST(StunMsgCxx, RFC5769SampleRequest) {
   EXPECT_TRUE(IsEqual(expected_result, message.data(),
       sizeof(expected_result)));
 
-/*
   // Now decoding
-  msg_hdr = (stun_msg_hdr *)expected_result;
-  EXPECT_EQ(STUN_BINDING_REQUEST, stun_msg_type(msg_hdr));
-  EXPECT_EQ(sizeof(expected_result), stun_msg_len(msg_hdr));
+  EXPECT_EQ(stun::message::binding_request, message.type());
 
-  stun_attr_hdr *attr_hdr = stun_msg_next_attr(msg_hdr, NULL);
-  EXPECT_EQ(STUN_ATTR_SOFTWARE, stun_attr_type(attr_hdr));
-  ASSERT_EQ(sizeof(software_name)-1, stun_attr_len(attr_hdr));
-  const void* data = (uint8_t*)stun_attr_varsize_read(
-    (stun_attr_varsize*)attr_hdr);
-  EXPECT_TRUE(IsEqual(data, software_name, sizeof(software_name)-1));
+  stun::message::iterator i = message.begin();
+  ASSERT_TRUE(message.end() != i);
+  EXPECT_EQ(stun::attribute::type::software, i->type());
+  ASSERT_EQ(software_name,
+    i->to<stun::attribute::type::software>().to_string());
 
+/*
   attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
   EXPECT_EQ(STUN_ATTR_PRIORITY, stun_attr_type(attr_hdr));
   EXPECT_EQ(0x6e0001fful, stun_attr_uint32_read((stun_attr_uint32*)attr_hdr));
