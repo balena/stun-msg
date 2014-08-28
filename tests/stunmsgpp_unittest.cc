@@ -152,41 +152,39 @@ TEST(StunMsgCxx, RFC5769SampleRequest) {
       sizeof(expected_result)));
 
   // Now decoding
+  using namespace stun::attribute;
   EXPECT_EQ(stun::message::binding_request, message.type());
 
   stun::message::iterator i = message.begin();
   ASSERT_TRUE(message.end() != i);
-  EXPECT_EQ(stun::attribute::type::software, i->type());
+  EXPECT_EQ(type::software, i->type());
   ASSERT_EQ(software_name,
-    i->to<stun::attribute::type::software>().to_string());
+    i->to<type::software>().to_string());
 
-/*
-  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_ATTR_PRIORITY, stun_attr_type(attr_hdr));
-  EXPECT_EQ(0x6e0001fful, stun_attr_uint32_read((stun_attr_uint32*)attr_hdr));
+  ASSERT_TRUE(message.end() != ++i);
+  EXPECT_EQ(type::priority, i->type());
+  EXPECT_EQ(0x6e0001fful,
+    i->to<type::priority>().value());
 
-  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_ATTR_ICE_CONTROLLED, stun_attr_type(attr_hdr));
+  ASSERT_TRUE(message.end() != ++i);
+  EXPECT_EQ(type::ice_controlled, i->type());
   EXPECT_EQ(0x932ff9b151263b36ull,
-      stun_attr_uint64_read((stun_attr_uint64*)attr_hdr));
+    i->to<type::ice_controlled>().value());
 
-  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_ATTR_USERNAME, stun_attr_type(attr_hdr));
-  ASSERT_EQ(sizeof(username)-1, stun_attr_len(attr_hdr));
-  data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
-  EXPECT_TRUE(IsEqual(data, username, sizeof(username)-1));
+  ASSERT_TRUE(message.end() != ++i);
+  EXPECT_EQ(type::username, i->type());
+  EXPECT_EQ(username,
+    i->to<type::username>().to_string());
 
-  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_ATTR_MESSAGE_INTEGRITY, stun_attr_type(attr_hdr));
-  EXPECT_EQ(1, stun_attr_msgint_check((stun_attr_msgint*)attr_hdr, msg_hdr,
-      (uint8_t*)password, sizeof(password)-1));
+  ASSERT_TRUE(message.end() != ++i);
+  EXPECT_EQ(type::message_integrity, i->type());
+  EXPECT_TRUE(
+    i->to<type::message_integrity>().check_integrity(password));
 
-  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_ATTR_FINGERPRINT, stun_attr_type(attr_hdr));
+  ASSERT_TRUE(message.end() != ++i);
+  EXPECT_EQ(type::fingerprint, i->type());
 
-  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(NULL, attr_hdr);
-*/
+  ASSERT_TRUE(message.end() == ++i);
 }
 
 TEST(StunMsgCxx, RFC5769SampleIPv4Response) {
@@ -236,40 +234,36 @@ TEST(StunMsgCxx, RFC5769SampleIPv4Response) {
   EXPECT_TRUE(IsEqual(expected_result, message.data(),
       sizeof(expected_result)));
 
-/*
   // Now decoding
-  msg_hdr = (stun_msg_hdr *)expected_result;
-  EXPECT_EQ(STUN_BINDING_RESPONSE, stun_msg_type(msg_hdr));
-  EXPECT_EQ(sizeof(expected_result), stun_msg_len(msg_hdr));
+  using namespace stun::attribute;
+  EXPECT_EQ(stun::message::binding_response, message.type());
 
-  stun_attr_hdr *attr_hdr = stun_msg_next_attr(msg_hdr, NULL);
-  EXPECT_EQ(STUN_ATTR_SOFTWARE, stun_attr_type(attr_hdr));
-  ASSERT_EQ(sizeof(software_name)-1, stun_attr_len(attr_hdr));
-  const void* data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
-  EXPECT_TRUE(IsEqual(data, software_name, sizeof(software_name)-1));
+  stun::message::iterator i = message.begin();
+  ASSERT_TRUE(message.end() != i);
+  EXPECT_EQ(type::software, i->type());
+  ASSERT_EQ(software_name,
+    i->to<type::software>().to_string());
 
-  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_ATTR_XOR_MAPPED_ADDRESS, stun_attr_type(attr_hdr));
+  ASSERT_TRUE(message.end() != ++i);
+  EXPECT_EQ(type::xor_mapped_address, i->type());
   sockaddr_in test_addr;
   memset(&test_addr, 0, sizeof(test_addr));
-  EXPECT_EQ(STUN_OK, stun_attr_xor_sockaddr_read(
-      (stun_attr_sockaddr*)attr_hdr, msg_hdr, (sockaddr*)&test_addr));
+  EXPECT_TRUE(
+    i->to<type::xor_mapped_address>().to_sockaddr((sockaddr*)&test_addr));
   EXPECT_EQ(AF_INET, test_addr.sin_family);
   EXPECT_EQ(htons(32853), test_addr.sin_port);
   EXPECT_EQ(0, memcmp(&test_addr.sin_addr, &ipv4.sin_addr,
       sizeof(ipv4.sin_addr)));
 
-  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_ATTR_MESSAGE_INTEGRITY, stun_attr_type(attr_hdr));
-  EXPECT_EQ(1, stun_attr_msgint_check((stun_attr_msgint*)attr_hdr, msg_hdr,
-      (uint8_t*)password, sizeof(password)-1));
+  ASSERT_TRUE(message.end() != ++i);
+  EXPECT_EQ(type::message_integrity, i->type());
+  EXPECT_TRUE(
+    i->to<type::message_integrity>().check_integrity(password));
 
-  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_ATTR_FINGERPRINT, stun_attr_type(attr_hdr));
+  ASSERT_TRUE(message.end() != ++i);
+  EXPECT_EQ(type::fingerprint, i->type());
 
-  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(NULL, attr_hdr);
-*/
+  ASSERT_TRUE(message.end() == ++i);
 }
 
 TEST(StunMsgEncode, RFC5769SampleIPv6Response) {
@@ -322,40 +316,36 @@ TEST(StunMsgEncode, RFC5769SampleIPv6Response) {
   EXPECT_TRUE(IsEqual(expected_result, message.data(),
       sizeof(expected_result)));
 
-/*
   // Now decoding
-  msg_hdr = (stun_msg_hdr *)expected_result;
-  EXPECT_EQ(STUN_BINDING_RESPONSE, stun_msg_type(msg_hdr));
-  EXPECT_EQ(sizeof(expected_result), stun_msg_len(msg_hdr));
+  using namespace stun::attribute;
+  EXPECT_EQ(stun::message::binding_response, message.type());
 
-  stun_attr_hdr *attr_hdr = stun_msg_next_attr(msg_hdr, NULL);
-  EXPECT_EQ(STUN_ATTR_SOFTWARE, stun_attr_type(attr_hdr));
-  ASSERT_EQ(sizeof(software_name)-1, stun_attr_len(attr_hdr));
-  const void* data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
-  EXPECT_TRUE(IsEqual(data, software_name, sizeof(software_name)-1));
+  stun::message::iterator i = message.begin();
+  ASSERT_TRUE(message.end() != i);
+  EXPECT_EQ(type::software, i->type());
+  ASSERT_EQ(software_name,
+    i->to<type::software>().to_string());
 
-  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_ATTR_XOR_MAPPED_ADDRESS, stun_attr_type(attr_hdr));
+  ASSERT_TRUE(message.end() != ++i);
+  EXPECT_EQ(type::xor_mapped_address, i->type());
   sockaddr_in6 test_addr;
   memset(&test_addr, 0, sizeof(test_addr));
-  EXPECT_EQ(STUN_OK, stun_attr_xor_sockaddr_read(
-      (stun_attr_sockaddr*)attr_hdr, msg_hdr, (sockaddr*)&test_addr));
+  EXPECT_TRUE(
+    i->to<type::xor_mapped_address>().to_sockaddr((sockaddr*)&test_addr));
   EXPECT_EQ(AF_INET6, test_addr.sin6_family);
   EXPECT_EQ(htons(32853), test_addr.sin6_port);
   EXPECT_EQ(0, memcmp(&test_addr.sin6_addr, &ipv6.sin6_addr,
       sizeof(ipv6.sin6_addr)));
 
-  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_ATTR_MESSAGE_INTEGRITY, stun_attr_type(attr_hdr));
-  EXPECT_EQ(1, stun_attr_msgint_check((stun_attr_msgint*)attr_hdr, msg_hdr,
-      (uint8_t*)password, sizeof(password)-1));
+  ASSERT_TRUE(message.end() != ++i);
+  EXPECT_EQ(type::message_integrity, i->type());
+  EXPECT_TRUE(
+    i->to<type::message_integrity>().check_integrity(password));
 
-  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_ATTR_FINGERPRINT, stun_attr_type(attr_hdr));
+  ASSERT_TRUE(message.end() != ++i);
+  EXPECT_EQ(type::fingerprint, i->type());
 
-  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(NULL, attr_hdr);
-*/
+  ASSERT_TRUE(message.end() == ++i);
 }
 
 TEST(StunMsgCxx, RFC5769SampleRequestLongTerm) {
@@ -420,38 +410,32 @@ TEST(StunMsgCxx, RFC5769SampleRequestLongTerm) {
   EXPECT_TRUE(IsEqual(expected_result, message.data(),
       sizeof(expected_result)));
 
-/*
   // Now decoding
-  msg_hdr = (stun_msg_hdr *)expected_result;
-  EXPECT_EQ(STUN_BINDING_REQUEST, stun_msg_type(msg_hdr));
-  EXPECT_EQ(sizeof(expected_result), stun_msg_len(msg_hdr));
+  using namespace stun::attribute;
+  EXPECT_EQ(stun::message::binding_request, message.type());
 
-  stun_attr_hdr *attr_hdr = stun_msg_next_attr(msg_hdr, NULL);
-  EXPECT_EQ(STUN_ATTR_USERNAME, stun_attr_type(attr_hdr));
-  ASSERT_EQ(sizeof(username)-1, stun_attr_len(attr_hdr));
-  const void* data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
-  EXPECT_TRUE(IsEqual(data, username, sizeof(username)-1));
+  stun::message::iterator i = message.begin();
+  ASSERT_TRUE(message.end() != i);
+  EXPECT_EQ(type::username, i->type());
+  ASSERT_EQ(username,
+    i->to<type::username>().to_string());
 
-  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_ATTR_NONCE, stun_attr_type(attr_hdr));
-  ASSERT_EQ(sizeof(nonce)-1, stun_attr_len(attr_hdr));
-  data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
-  EXPECT_TRUE(IsEqual(data, nonce, sizeof(nonce)-1));
+  ASSERT_TRUE(message.end() != ++i);
+  EXPECT_EQ(type::nonce, i->type());
+  ASSERT_EQ(nonce,
+    i->to<type::nonce>().to_string());
 
-  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_ATTR_REALM, stun_attr_type(attr_hdr));
-  ASSERT_EQ(sizeof(realm)-1, stun_attr_len(attr_hdr));
-  data = stun_attr_varsize_read((stun_attr_varsize*)attr_hdr);
-  EXPECT_TRUE(IsEqual(data, realm, sizeof(realm)-1));
+  ASSERT_TRUE(message.end() != ++i);
+  EXPECT_EQ(type::realm, i->type());
+  ASSERT_EQ(realm,
+    i->to<type::realm>().to_string());
 
-  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_ATTR_MESSAGE_INTEGRITY, stun_attr_type(attr_hdr));
-  EXPECT_EQ(1, stun_attr_msgint_check((stun_attr_msgint*)attr_hdr, msg_hdr,
-      key, sizeof(key)));
+  ASSERT_TRUE(message.end() != ++i);
+  EXPECT_EQ(type::message_integrity, i->type());
+  EXPECT_TRUE(
+    i->to<type::message_integrity>().check_integrity(key, key + sizeof(key)));
 
-  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(NULL, attr_hdr);
-*/
+  ASSERT_TRUE(message.end() == ++i);
 }
 
 TEST(StunMsgCxx, ErrorResponse) {
@@ -488,31 +472,26 @@ TEST(StunMsgCxx, ErrorResponse) {
   EXPECT_TRUE(IsEqual(expected_result, message.data(),
       sizeof(expected_result)));
 
-/*
   // Now decoding
-  msg_hdr = (stun_msg_hdr *)expected_result;
-  EXPECT_EQ(STUN_BINDING_ERROR_RESPONSE, stun_msg_type(msg_hdr));
-  EXPECT_EQ(sizeof(expected_result), stun_msg_len(msg_hdr));
+  using namespace stun::attribute;
+  EXPECT_EQ(stun::message::binding_error_response, message.type());
 
-  stun_attr_hdr *attr_hdr = stun_msg_next_attr(msg_hdr, NULL);
-  EXPECT_EQ(STUN_ATTR_ERROR_CODE, stun_attr_type(attr_hdr));
-  stun_attr_errcode *attr_errcode = (stun_attr_errcode *)attr_hdr;
-  EXPECT_EQ(420, stun_attr_errcode_status(attr_errcode));
-  ASSERT_EQ(sizeof(reason_phrase)-1,
-      stun_attr_errcode_reason_len(attr_errcode));
-  EXPECT_TRUE(IsEqual(reason_phrase,
-      stun_attr_errcode_reason(attr_errcode),
-      sizeof(reason_phrase)-1));
+  stun::message::iterator i = message.begin();
+  ASSERT_TRUE(message.end() != i);
+  EXPECT_EQ(type::error_code, i->type());
+  stun::attribute::decoding::error_code errcode =
+    i->to<type::error_code>();
+  EXPECT_EQ(420, errcode.status_code());
+  EXPECT_EQ(reason_phrase, errcode.reason_phrase());
 
-  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(STUN_ATTR_UNKNOWN_ATTRIBUTES, stun_attr_type(attr_hdr));
-  stun_attr_unknown *attr_unk = (stun_attr_unknown *)attr_hdr;
-  ASSERT_EQ(ARRAY_SIZE(unknown), stun_attr_unknown_count(attr_unk));
+  ASSERT_TRUE(message.end() != ++i);
+  EXPECT_EQ(type::unknown_attributes, i->type());
+  stun::attribute::decoding::unknown_attributes unk =
+    i->to<type::unknown_attributes>();
+  ASSERT_EQ(ARRAY_SIZE(unknown), unk.size());
   for (size_t i = 0; i < ARRAY_SIZE(unknown); i++) {
-    EXPECT_EQ(unknown[i], stun_attr_unknown_get(attr_unk, i));
+    EXPECT_EQ(unknown[i], unk[i]);
   }
 
-  attr_hdr = stun_msg_next_attr(msg_hdr, attr_hdr);
-  EXPECT_EQ(NULL, attr_hdr);
-*/
+  ASSERT_TRUE(message.end() == ++i);
 }

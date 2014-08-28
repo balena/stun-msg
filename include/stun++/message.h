@@ -86,7 +86,7 @@ class socket_address : public attribute_base<stun_attr_sockaddr> {
                  const stun_attr_hdr* attr_hdr)
       : attribute_base(msg_hdr, attr_hdr) {}
   bool to_sockaddr(sockaddr *addr) {
-    return stun_attr_sockaddr_read(attr_, addr)
+    return stun_attr_sockaddr_read(attr_, addr) == STUN_OK
            ? true : false;
   }
 };
@@ -97,7 +97,7 @@ class xor_socket_address : public attribute_base<stun_attr_xor_sockaddr> {
                      const stun_attr_hdr* attr_hdr)
       : attribute_base(msg_hdr, attr_hdr) {}
   bool to_sockaddr(sockaddr *addr) {
-    return stun_attr_xor_sockaddr_read(attr_, msg_hdr_, addr)
+    return stun_attr_xor_sockaddr_read(attr_, msg_hdr_, addr) == STUN_OK
            ? true : false;
   }
 };
@@ -296,6 +296,10 @@ STUNXX_ATTRIBUTE_SOCKADDR_LIKE(other_address)
 #undef STUNXX_ATTRIBUTE_UINT32_LIKE
 #undef STUNXX_ATTRIBUTE_UINT64_LIKE
 
+typedef decoding_bits::msgint message_integrity;
+typedef decoding_bits::errcode error_code;
+typedef decoding_bits::unknown unknown_attributes;
+
 } // namespace decoding
 
 
@@ -412,6 +416,21 @@ STUNXX_ATTRIBUTE_SOCKADDR_LIKE(other_address)
 #undef STUNXX_ATTRIBUTE_UINT16_PAD_LIKE
 #undef STUNXX_ATTRIBUTE_UINT32_LIKE
 #undef STUNXX_ATTRIBUTE_UINT64_LIKE
+
+template<>
+struct traits<type::message_integrity> {
+  typedef decoding::message_integrity decoding_type;
+};
+
+template<>
+struct traits<type::error_code> {
+  typedef decoding::error_code decoding_type;
+};
+
+template<>
+struct traits<type::unknown_attributes> {
+  typedef decoding::unknown_attributes decoding_type;
+};
 
 } // namespace decoding_bits
 
@@ -835,14 +854,14 @@ class message {
         : attr_(msg_hdr, reinterpret_cast<const stun_attr_hdr*>(ptr)) {}
 
     self_type operator++() {
-      self_type it = *this;
       attr_ = attr_.next();
-      return it;
+      return *this;
     }
 
     self_type operator++(int) {
+      self_type it = *this;
       attr_ = attr_.next();
-      return *this;
+      return it;
     }
 
     const reference operator*() {
@@ -923,11 +942,12 @@ class message {
   }
 
   iterator begin() const {
-    return iterator(hdr(), buffer_.data() + sizeof(stun_msg_hdr));
+    return iterator(hdr(),
+      reinterpret_cast<const uint8_t*>(stun_msg_next_attr(hdr(), NULL)));
   }
 
   iterator end() const {
-    return iterator(hdr(), stun_msg_end(hdr()));
+    return iterator(hdr(), NULL);
   }
 
  private:
