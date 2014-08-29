@@ -117,22 +117,22 @@ const char *stun_method_name(uint16_t type)
 {
   int method = STUN_GET_METHOD(type);
   if (method >= sizeof(method_map)/sizeof(method_map[0]))
-	  return "???";
+    return "???";
   return method_map[method];
 }
 
 const char *stun_class_name(uint16_t type)
 {
   if (STUN_IS_REQUEST(type))
-	  return "Request";
+    return "Request";
   else if (STUN_IS_SUCCESS_RESPONSE(type))
-	  return "Success Response";
+    return "Success Response";
   else if (STUN_IS_ERROR_RESPONSE(type))
-	  return "Error Response";
+    return "Error Response";
   else if (STUN_IS_INDICATION(type))
-	  return "Indication";
+    return "Indication";
   else
-	  return "???";
+    return "???";
 }
 
 void stun_msg_hdr_init(stun_msg_hdr *msg_hdr, uint16_t type,
@@ -452,7 +452,7 @@ int stun_msg_verify(const stun_msg_hdr *msg_hdr, size_t msg_size) {
 
   /* First byte of STUN message is always 0x00 or 0x01. */
   if (*p != 0x00 && *p != 0x01)
-	  return 0;
+    return 0;
 
   /* Check the length, it cannot exceed the message size. */
   msg_len = stun_msg_len(msg_hdr);
@@ -463,7 +463,7 @@ int stun_msg_verify(const stun_msg_hdr *msg_hdr, size_t msg_size) {
    * the last two bits of the length field are always zero.
    */
   if ((msg_len & 0x03) != 0)
-	  return 0;
+    return 0;
 
   /* Check if the attribute lengths don't exceed the message length. */
   p_end = p + msg_len;
@@ -477,7 +477,7 @@ int stun_msg_verify(const stun_msg_hdr *msg_hdr, size_t msg_size) {
   if (p != p_end)
     return 0;
 
-	/* If FINGERPRINT is the last attribute, check if is valid */
+  /* If FINGERPRINT is the last attribute, check if is valid */
   if (ntohs(attr_hdr->type) == STUN_ATTR_FINGERPRINT) {
     uint32_t value;
     const stun_attr_uint32 *attr_uint32 =
