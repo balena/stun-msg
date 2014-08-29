@@ -479,13 +479,9 @@ int stun_msg_verify(const stun_msg_hdr *msg_hdr, size_t msg_size) {
 
   /* If FINGERPRINT is the last attribute, check if is valid */
   if (ntohs(attr_hdr->type) == STUN_ATTR_FINGERPRINT) {
-    uint32_t value;
-    const stun_attr_uint32 *attr_uint32 =
+    const stun_attr_uint32 *fingerprint =
         (const stun_attr_uint32 *)attr_hdr;
-    p_end = (uint8_t*)attr_hdr;
-    p = (uint8_t*)msg_hdr;
-    value = crc32(0, p, p_end - p) ^ STUN_XOR_FINGERPRINT;
-    if (ntohl(attr_uint32->value) != value)
+    if (!stun_attr_fingerprint_check(fingerprint, msg_hdr))
       return 0;
   }
 
@@ -671,4 +667,14 @@ void stun_genkey(const void *username, size_t username_len,
   MD5_Update(&ctx, ":", 1);
   MD5_Update(&ctx, password, password_len);
   MD5_Final(key, &ctx);
+}
+
+int stun_attr_fingerprint_check(const stun_attr_uint32 *fingerprint,
+                                const stun_msg_hdr *msg_hdr) {
+  uint32_t value;
+  uint8_t *p, *p_end;
+  p_end = (uint8_t*)fingerprint;
+  p = (uint8_t*)msg_hdr;
+  value = crc32(0, p, p_end - p) ^ STUN_XOR_FINGERPRINT;
+  return ntohl(fingerprint->value) != value ? 0 : 1;
 }

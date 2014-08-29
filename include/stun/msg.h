@@ -557,6 +557,11 @@ void stun_genkey(const void *username, size_t username_len,
                  const void *password, size_t password_len,
                  uint8_t key[16]);
 
+/* Checks the FINGERPRINT attribute.
+ */
+int stun_attr_fingerprint_check(const stun_attr_uint32 *fingerprint,
+                                const stun_msg_hdr *msg_hdr);
+
 #ifdef __cplusplus
 };
 #endif
