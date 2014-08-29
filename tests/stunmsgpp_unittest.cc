@@ -183,6 +183,8 @@ TEST(StunMsgCxx, RFC5769SampleRequest) {
 
   ASSERT_TRUE(message.end() != ++i);
   EXPECT_EQ(type::fingerprint, i->type());
+  EXPECT_TRUE(
+    i->to<type::fingerprint>().check_integrity());
 
   ASSERT_TRUE(message.end() == ++i);
 }
@@ -262,6 +264,8 @@ TEST(StunMsgCxx, RFC5769SampleIPv4Response) {
 
   ASSERT_TRUE(message.end() != ++i);
   EXPECT_EQ(type::fingerprint, i->type());
+  EXPECT_TRUE(
+    i->to<type::fingerprint>().check_integrity());
 
   ASSERT_TRUE(message.end() == ++i);
 }
@@ -344,6 +348,8 @@ TEST(StunMsgEncode, RFC5769SampleIPv6Response) {
 
   ASSERT_TRUE(message.end() != ++i);
   EXPECT_EQ(type::fingerprint, i->type());
+  EXPECT_TRUE(
+    i->to<type::fingerprint>().check_integrity());
 
   ASSERT_TRUE(message.end() == ++i);
 }
