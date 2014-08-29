@@ -916,11 +916,13 @@ class base_message {
     connection_attempt_error_response = STUN_CONNECTION_ATTEMPT_ERROR_RESPONSE,
   };
 
+  static const size_t header_size = sizeof(stun_msg_hdr);
+
   base_message()
-      : buffer_(sizeof(stun_msg_hdr), 0) {}
+      : buffer_(header_size, 0) {}
 
   base_message(size_t n)
-      : buffer_(n < sizeof(stun_msg_hdr) ? sizeof(stun_msg_hdr) : n, 0) {}
+      : buffer_(n < header_size ? header_size : n, 0) {}
 
   base_message(const base_message& msg)
       : buffer_(msg.buffer_) {}
@@ -933,7 +935,7 @@ class base_message {
       : buffer_(first, last) {}
 
   base_message(uint16_t type, const uint8_t tsx_id[12])
-      : buffer_(sizeof(stun_msg_hdr), 0) {
+      : buffer_(header_size, 0) {
     stun_msg_hdr_init(hdr(), type, tsx_id);
   }
 
