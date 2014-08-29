@@ -943,8 +943,14 @@ class base_message {
   size_t capacity() const { return buffer_.size(); }
 
   uint8_t *data() { return buffer_.data(); }
+  const uint8_t *data() const { return buffer_.data(); }
+
   size_t size() const {
     return stun_msg_len(hdr());
+  }
+
+  bool verify() const {
+    return stun_msg_verify(hdr(), capacity()) == 0 ? false : true;
   }
 
   uint16_t type() const {
@@ -1083,6 +1089,56 @@ base_message<Allocator> &operator << (base_message<Allocator> &msg,
 }
 
 typedef base_message<std::allocator<uint8_t> > message;
+
+
+class message_piece {
+ public:
+  typedef message::iterator iterator;
+
+  message_piece()
+      : ptr_(NULL), length_(0) {}
+
+  message_piece(const message& msg)
+      : ptr_(msg.data()), length_(msg.size()) {}
+
+  message_piece(const uint8_t *buf, size_t buf_len)
+      : ptr_(buf), length_(buf_len) {}
+
+  template<class InputIterator>
+  message_piece(InputIterator first, InputIterator last)
+      : ptr_((last > first) ? &(*first) : NULL),
+        length_((last > first) ? (size_t)(last - first) : 0) {}
+
+  ~message_piece() {}
+
+  const uint8_t *data() const { return ptr_; }
+  size_t size() const { return length_; }
+
+  bool verify() const {
+    return stun_msg_verify(hdr(), length_) == 0 ? false : true;
+  }
+
+  uint16_t type() const {
+    return stun_msg_type(hdr());
+  }
+
+  iterator begin() const {
+    return iterator(hdr(),
+      reinterpret_cast<const uint8_t*>(stun_msg_next_attr(hdr(), NULL)));
+  }
+
+  iterator end() const {
+    return iterator(hdr(), NULL);
+  }
+
+ private:
+  const uint8_t *ptr_;
+  size_t length_;
+
+  const stun_msg_hdr *hdr() const {
+    return reinterpret_cast<const stun_msg_hdr*>(ptr_);
+  }
+};
 
 } // namespace stun
 
