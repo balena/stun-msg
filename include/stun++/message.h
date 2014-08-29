@@ -838,7 +838,8 @@ bits::fingerprint fingerprint() {
 
 } // namespace attribute
 
-class message {
+template<class Allocator>
+class base_message {
  public:
   class iterator {
    public:
@@ -915,15 +916,30 @@ class message {
     connection_attempt_error_response = STUN_CONNECTION_ATTEMPT_ERROR_RESPONSE,
   };
 
-  message()
+  base_message()
       : buffer_(sizeof(stun_msg_hdr), 0) {}
 
-  message(uint16_t type, const uint8_t tsx_id[12])
+  base_message(size_t n)
+      : buffer_(n < sizeof(stun_msg_hdr) ? sizeof(stun_msg_hdr) : n, 0) {}
+
+  base_message(const base_message& msg)
+      : buffer_(msg.buffer_) {}
+
+  base_message(const uint8_t *buf, size_t buf_len)
+      : buffer_(buf, buf_len) {}
+
+  template<class InputIterator>
+  base_message(InputIterator first, InputIterator last)
+      : buffer_(first, last) {}
+
+  base_message(uint16_t type, const uint8_t tsx_id[12])
       : buffer_(sizeof(stun_msg_hdr), 0) {
     stun_msg_hdr_init(hdr(), type, tsx_id);
   }
 
-  void resize(size_t size) { buffer_.resize(size); }
+  ~base_message() {}
+
+  void resize(size_t size) { buffer_.resize(size, 0); }
   size_t capacity() const { return buffer_.size(); }
 
   uint8_t *data() { return buffer_.data(); }
@@ -951,7 +967,7 @@ class message {
   }
 
  private:
-  std::vector<uint8_t> buffer_;
+  std::vector<uint8_t, Allocator> buffer_;
 
   stun_msg_hdr *hdr() {
     return reinterpret_cast<stun_msg_hdr*>(buffer_.data());
@@ -961,66 +977,112 @@ class message {
   }
 };
 
-message &operator << (message &msg, const attribute::bits::empty &attr) {
+template<class Allocator>
+base_message<Allocator> &operator << (base_message<Allocator> &msg,
+    const attribute::bits::empty &attr) {
   msg.push_back(attr);
   return msg;
 }
-message &operator << (message &msg, const attribute::bits::socket_address &attr) {
+
+template<class Allocator>
+base_message<Allocator> &operator << (base_message<Allocator> &msg,
+    const attribute::bits::socket_address &attr) {
   msg.push_back(attr);
   return msg;
 }
-message &operator << (message &msg, const attribute::bits::xor_socket_address &attr) {
+
+template<class Allocator>
+base_message<Allocator> &operator << (base_message<Allocator> &msg,
+    const attribute::bits::xor_socket_address &attr) {
   msg.push_back(attr);
   return msg;
 }
-message &operator << (message &msg, const attribute::bits::varsize<char> &attr) {
+
+template<class Allocator>
+base_message<Allocator> &operator << (base_message<Allocator> &msg,
+    const attribute::bits::varsize<char> &attr) {
   msg.push_back(attr);
   return msg;
 }
-message &operator << (message &msg, const attribute::bits::varsize<uint8_t> &attr) {
+
+template<class Allocator>
+base_message<Allocator> &operator << (base_message<Allocator> &msg,
+    const attribute::bits::varsize<uint8_t> &attr) {
   msg.push_back(attr);
   return msg;
 }
-message &operator << (message &msg, const attribute::bits::u8 &attr) {
+
+template<class Allocator>
+base_message<Allocator> &operator << (base_message<Allocator> &msg,
+    const attribute::bits::u8 &attr) {
   msg.push_back(attr);
   return msg;
 }
-message &operator << (message &msg, const attribute::bits::u8_pad &attr) {
+
+template<class Allocator>
+base_message<Allocator> &operator << (base_message<Allocator> &msg,
+    const attribute::bits::u8_pad &attr) {
   msg.push_back(attr);
   return msg;
 }
-message &operator << (message &msg, const attribute::bits::u16 &attr) {
+
+template<class Allocator>
+base_message<Allocator> &operator << (base_message<Allocator> &msg,
+    const attribute::bits::u16 &attr) {
   msg.push_back(attr);
   return msg;
 }
-message &operator << (message &msg, const attribute::bits::u16_pad &attr) {
+
+template<class Allocator>
+base_message<Allocator> &operator << (base_message<Allocator> &msg,
+    const attribute::bits::u16_pad &attr) {
   msg.push_back(attr);
   return msg;
 }
-message &operator << (message &msg, const attribute::bits::u32 &attr) {
+
+template<class Allocator>
+base_message<Allocator> &operator << (base_message<Allocator> &msg,
+    const attribute::bits::u32 &attr) {
   msg.push_back(attr);
   return msg;
 }
-message &operator << (message &msg, const attribute::bits::u64 &attr) {
+
+template<class Allocator>
+base_message<Allocator> &operator << (base_message<Allocator> &msg,
+    const attribute::bits::u64 &attr) {
   msg.push_back(attr);
   return msg;
 }
-message &operator << (message &msg, const attribute::bits::errcode &attr) {
+
+template<class Allocator>
+base_message<Allocator> &operator << (base_message<Allocator> &msg,
+    const attribute::bits::errcode &attr) {
   msg.push_back(attr);
   return msg;
 }
-message &operator << (message &msg, const attribute::bits::unknown &attr) {
+
+template<class Allocator>
+base_message<Allocator> &operator << (base_message<Allocator> &msg,
+    const attribute::bits::unknown &attr) {
   msg.push_back(attr);
   return msg;
 }
-message &operator << (message &msg, const attribute::bits::msgint &attr) {
+
+template<class Allocator>
+base_message<Allocator> &operator << (base_message<Allocator> &msg,
+    const attribute::bits::msgint &attr) {
   msg.push_back(attr);
   return msg;
 }
-message &operator << (message &msg, const attribute::bits::fingerprint &attr) {
+
+template<class Allocator>
+base_message<Allocator> &operator << (base_message<Allocator> &msg,
+    const attribute::bits::fingerprint &attr) {
   msg.push_back(attr);
   return msg;
 }
+
+typedef base_message<std::allocator<uint8_t> > message;
 
 } // namespace stun
 
