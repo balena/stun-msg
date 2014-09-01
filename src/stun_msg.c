@@ -77,12 +77,12 @@ static struct {
 };
 
 static const char *method_map[] = {
-  /* 0 */ "???",
+  /* 0 */ NULL,
   /* 1 */ "Binding",
   /* 2 */ "SharedSecret",
   /* 3 */ "Allocate",
   /* 4 */ "Refresh",
-  /* 5 */ "???",
+  /* 5 */ NULL,
   /* 6 */ "Send",
   /* 7 */ "Data",
   /* 8 */ "CreatePermission",
@@ -93,32 +93,25 @@ static const char *method_map[] = {
 };
 
 const char *stun_err_reason(int err_code) {
-  int first = 0;
-  int n = sizeof(err_msg_map) / sizeof(err_msg_map[0]);
-
-  /* Find error message using binary search */
-  while (n > 0) {
-    int half = n/2;
-    int mid = first + half;
-    if (err_msg_map[mid].err_code < err_code) {
-      first = mid+1;
-      n -= (half+1);
-    } else if (err_msg_map[mid].err_code > err_code) {
-      n = half;
-    } else {
-      return err_msg_map[mid].err_msg;
+  int i;
+  const char *msg = NULL;
+  for (i = 0; i < sizeof(err_msg_map) / sizeof(err_msg_map[0]); i++) {
+    if (err_msg_map[i].err_code == err_code) {
+      msg = err_msg_map[i].err_msg;
+      break;
     }
   }
-
-  return NULL;
+  /* Avoiding to return NULL for unknown codes */
+  return (msg == NULL) ? "???" : msg;
 }
 
 const char *stun_method_name(uint16_t type)
 {
+  const char *name = NULL;
   int method = STUN_GET_METHOD(type);
-  if (method >= sizeof(method_map)/sizeof(method_map[0]))
-    return "???";
-  return method_map[method];
+  if (method < sizeof(method_map)/sizeof(method_map[0]))
+    name = method_map[method];
+  return (name == NULL) ? "???" : name;
 }
 
 const char *stun_class_name(uint16_t type)
