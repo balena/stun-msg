@@ -12,6 +12,7 @@
 #include <stun/msg.h>
 #include <vector>
 #include <string>
+#include <cstring>
 
 // Forward sockaddr declarations;
 struct sockaddr_in;
@@ -284,7 +285,8 @@ class decoded {
 
   template<type::attribute_type T>
   typename decoding_bits::traits<T>::decoding_type to() {
-    return decoding_bits::traits<T>::decoding_type(msg_hdr_, attr_hdr_);
+    return typename decoding_bits::traits<T>::decoding_type(
+        msg_hdr_, attr_hdr_);
   }
 
  private:
