@@ -3,4 +3,4 @@ This is a public domain implementation in C and C++ of the STUN message (decoder
 Check the full documentation:
 
   * [How to Use the C library](https://github.com/guibv/stun-msg/wiki/How-to-use-the-C-library)
-  * How to Use the C++ library
+  * [How to Use the C++ library](https://github.com/guibv/stun-msg/wiki/How-to-use-the-CPP-library)
