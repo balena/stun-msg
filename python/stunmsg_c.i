@@ -170,21 +170,7 @@ const char *stun_class_name(uint16_t type);
   $1 = (uint8_t*)PyByteArray_AS_STRING($input);
 }
 
-%typemap(in) (const void *buf, size_t buf_size) {
-  if (PyByteArray_Check($input)) {
-    $1 = PyByteArray_AsString($input);
-    $2 = (size_t)PyByteArray_Size($input);
-  } else if (PyString_Check($input)) {
-    $1 = PyString_AsString($input);
-    $2 = (size_t)PyString_Size($input);
-  } else {
-    PyErr_SetString(PyExc_ValueError, "Type mismatch."
-                    " Expected bytearray or string object");
-    return NULL;
-  }
-}
-
-%typemap(in) (const void *buf, size_t buf_size) {
+%typemap(in) (const void *Buf, size_t BufSize) {
   if (PyByteArray_Check($input)) {
     $1 = PyByteArray_AsString($input);
     $2 = (size_t)PyByteArray_Size($input);
@@ -252,6 +238,41 @@ const char *stun_class_name(uint16_t type);
   free($1);
 }
 
+void stun_msg_hdr_init(stun_msg_hdr *msg_hdr, uint16_t type,
+                       const uint8_t tsx_id[12]);
+
+uint16_t stun_msg_type(const stun_msg_hdr *msg_hdr);
+size_t stun_msg_len(const stun_msg_hdr *msg_hdr);
+
+void stun_attr_empty_add(stun_msg_hdr *msg_hdr, uint16_t type);
+int stun_attr_sockaddr_add(stun_msg_hdr *msg_hdr, uint16_t type,
+                           const struct sockaddr *addr);
+int stun_attr_xor_sockaddr_add(stun_msg_hdr *msg_hdr, uint16_t type,
+                               const struct sockaddr *addr);
+void stun_attr_varsize_add(stun_msg_hdr *msg_hdr, uint16_t type,
+                           const void *Buf, size_t BufSize, uint8_t pad);
+void stun_attr_uint8_add(stun_msg_hdr *msg_hdr, uint16_t type, uint8_t value);
+void stun_attr_uint8_pad_add(stun_msg_hdr *msg_hdr, uint16_t type,
+                             uint8_t value, uint8_t pad);
+void stun_attr_uint16_add(stun_msg_hdr *msg_hdr, uint16_t type,
+                          uint16_t value);
+void stun_attr_uint16_pad_add(stun_msg_hdr *msg_hdr, uint16_t type,
+                              uint16_t value, uint8_t pad);
+void stun_attr_uint32_add(stun_msg_hdr *msg_hdr, uint16_t type,
+                          uint32_t value);
+void stun_attr_uint64_add(stun_msg_hdr *msg_hdr, uint16_t type,
+                          uint64_t value);
+void stun_attr_errcode_add(stun_msg_hdr *msg_hdr, int err_code,
+                           const char *err_reason, uint8_t pad);
+void stun_attr_unknown_add(stun_msg_hdr *msg_hdr,
+                           const uint16_t *unknown_codes, size_t count,
+                           uint8_t pad);
+void stun_attr_msgint_add(stun_msg_hdr *msg_hdr,
+                          const void *Buf, size_t BufSize);
+void stun_attr_fingerprint_add(stun_msg_hdr *msg_hdr);
+
+int stun_msg_verify(const stun_msg_hdr *msg_hdr, size_t msg_size);
+
 %typemap(in) const stun_attr_hdr * {
   char *b;
   size_t index;
@@ -272,40 +293,6 @@ const char *stun_class_name(uint16_t type);
   $1 = (stun_attr_hdr*)(&b[index]);
 }
 
-void stun_msg_hdr_init(stun_msg_hdr *msg_hdr, uint16_t type,
-                       const uint8_t tsx_id[12]);
-
-uint16_t stun_msg_type(const stun_msg_hdr *msg_hdr);
-size_t stun_msg_len(const stun_msg_hdr *msg_hdr);
-
-void stun_attr_empty_add(stun_msg_hdr *msg_hdr, uint16_t type);
-int stun_attr_sockaddr_add(stun_msg_hdr *msg_hdr, uint16_t type,
-                           const struct sockaddr *addr);
-int stun_attr_xor_sockaddr_add(stun_msg_hdr *msg_hdr, uint16_t type,
-                               const struct sockaddr *addr);
-void stun_attr_varsize_add(stun_msg_hdr *msg_hdr, uint16_t type,
-                           const void *buf, size_t buf_size, uint8_t pad);
-void stun_attr_uint8_add(stun_msg_hdr *msg_hdr, uint16_t type, uint8_t value);
-void stun_attr_uint8_pad_add(stun_msg_hdr *msg_hdr, uint16_t type,
-                             uint8_t value, uint8_t pad);
-void stun_attr_uint16_add(stun_msg_hdr *msg_hdr, uint16_t type,
-                          uint16_t value);
-void stun_attr_uint16_pad_add(stun_msg_hdr *msg_hdr, uint16_t type,
-                              uint16_t value, uint8_t pad);
-void stun_attr_uint32_add(stun_msg_hdr *msg_hdr, uint16_t type,
-                          uint32_t value);
-void stun_attr_uint64_add(stun_msg_hdr *msg_hdr, uint16_t type,
-                          uint64_t value);
-void stun_attr_errcode_add(stun_msg_hdr *msg_hdr, int err_code,
-                           const char *err_reason, uint8_t pad);
-void stun_attr_unknown_add(stun_msg_hdr *msg_hdr,
-                           const uint16_t *unknown_codes, size_t count,
-                           uint8_t pad);
-void stun_attr_msgint_add(stun_msg_hdr *msg_hdr,
-                          const void *key, size_t key_len);
-void stun_attr_fingerprint_add(stun_msg_hdr *msg_hdr);
-
-int stun_msg_verify(const stun_msg_hdr *msg_hdr, size_t msg_size);
 size_t stun_attr_len(const stun_attr_hdr *attr_hdr);
 size_t stun_attr_block_len(const stun_attr_hdr *attr_hdr);
 uint16_t stun_attr_type(const stun_attr_hdr *attr_hdr);
@@ -375,28 +362,223 @@ PyObject *find_attr(const stun_msg_hdr *msg_hdr, uint16_t type);
   $1 = &temp;
 }
 
+%typemap(in) const stun_attr_sockaddr * {
+  char *b;
+  size_t index;
+  PyObject *p, *fast = PySequence_Fast($input, "Type mismatch."
+                    " Expected a (bytearray, index) sequence");
+  if (PySequence_Fast_GET_SIZE(fast) != 2) {
+    PyErr_SetString(PyExc_ValueError, "Type mismatch."
+                    " Expected a (bytearray, index) sequence");
+    return NULL;
+  }
+  p = PySequence_Fast_GET_ITEM(fast, 0);
+  b = PyByteArray_AsString(p);
+  index = (size_t)PyInt_AsLong(PySequence_Fast_GET_ITEM(fast, 1));
+  if (index >= PyByteArray_Size(p)) {
+    PyErr_SetString(PyExc_ValueError, "Wrong index");
+    return NULL;
+  }
+  $1 = (stun_attr_sockaddr*)(&b[index]);
+}
+
 int stun_attr_sockaddr_read(const stun_attr_sockaddr *attr,
                             struct sockaddr *SockAddrOut);
 int stun_attr_xor_sockaddr_read(const stun_attr_xor_sockaddr *attr,
                                 const stun_msg_hdr *msg_hdr,
                                 struct sockaddr *SockAddrOut);
 
-const void *stun_attr_varsize_read(const stun_attr_varsize *attr);
+%typemap(in) const stun_attr_varsize * {
+  char *b;
+  size_t index;
+  PyObject *p, *fast = PySequence_Fast($input, "Type mismatch."
+                    " Expected a (bytearray, index) sequence");
+  if (PySequence_Fast_GET_SIZE(fast) != 2) {
+    PyErr_SetString(PyExc_ValueError, "Type mismatch."
+                    " Expected a (bytearray, index) sequence");
+    return NULL;
+  }
+  p = PySequence_Fast_GET_ITEM(fast, 0);
+  b = PyByteArray_AsString(p);
+  index = (size_t)PyInt_AsLong(PySequence_Fast_GET_ITEM(fast, 1));
+  if (index >= PyByteArray_Size(p)) {
+    PyErr_SetString(PyExc_ValueError, "Wrong index");
+    return NULL;
+  }
+  $1 = (stun_attr_varsize*)(&b[index]);
+}
+
+inline %{
+PyObject *varsize_read(const stun_attr_varsize *attr) {
+  size_t len = stun_attr_len(&attr->hdr);
+  const void *data = stun_attr_varsize_read(attr);
+  return PyString_FromStringAndSize((const char*)data, len);
+}
+%}
+PyObject *varsize_read(const stun_attr_varsize *attr);
+
+%typemap(in) const stun_attr_uint8 * {
+  char *b;
+  size_t index;
+  PyObject *p, *fast = PySequence_Fast($input, "Type mismatch."
+                    " Expected a (bytearray, index) sequence");
+  if (PySequence_Fast_GET_SIZE(fast) != 2) {
+    PyErr_SetString(PyExc_ValueError, "Type mismatch."
+                    " Expected a (bytearray, index) sequence");
+    return NULL;
+  }
+  p = PySequence_Fast_GET_ITEM(fast, 0);
+  b = PyByteArray_AsString(p);
+  index = (size_t)PyInt_AsLong(PySequence_Fast_GET_ITEM(fast, 1));
+  if (index >= PyByteArray_Size(p)) {
+    PyErr_SetString(PyExc_ValueError, "Wrong index");
+    return NULL;
+  }
+  $1 = (stun_attr_uint8*)(&b[index]);
+}
 uint8_t stun_attr_uint8_read(const stun_attr_uint8 *attr);
+
+%typemap(in) const stun_attr_uint16 * {
+  char *b;
+  size_t index;
+  PyObject *p, *fast = PySequence_Fast($input, "Type mismatch."
+                    " Expected a (bytearray, index) sequence");
+  if (PySequence_Fast_GET_SIZE(fast) != 2) {
+    PyErr_SetString(PyExc_ValueError, "Type mismatch."
+                    " Expected a (bytearray, index) sequence");
+    return NULL;
+  }
+  p = PySequence_Fast_GET_ITEM(fast, 0);
+  b = PyByteArray_AsString(p);
+  index = (size_t)PyInt_AsLong(PySequence_Fast_GET_ITEM(fast, 1));
+  if (index >= PyByteArray_Size(p)) {
+    PyErr_SetString(PyExc_ValueError, "Wrong index");
+    return NULL;
+  }
+  $1 = (stun_attr_uint16*)(&b[index]);
+}
 uint16_t stun_attr_uint16_read(const stun_attr_uint16 *attr);
+
+%typemap(in) const stun_attr_uint32 * {
+  char *b;
+  size_t index;
+  PyObject *p, *fast = PySequence_Fast($input, "Type mismatch."
+                    " Expected a (bytearray, index) sequence");
+  if (PySequence_Fast_GET_SIZE(fast) != 2) {
+    PyErr_SetString(PyExc_ValueError, "Type mismatch."
+                    " Expected a (bytearray, index) sequence");
+    return NULL;
+  }
+  p = PySequence_Fast_GET_ITEM(fast, 0);
+  b = PyByteArray_AsString(p);
+  index = (size_t)PyInt_AsLong(PySequence_Fast_GET_ITEM(fast, 1));
+  if (index >= PyByteArray_Size(p)) {
+    PyErr_SetString(PyExc_ValueError, "Wrong index");
+    return NULL;
+  }
+  $1 = (stun_attr_uint32*)(&b[index]);
+}
 uint32_t stun_attr_uint32_read(const stun_attr_uint32 *attr);
+
+%typemap(in) const stun_attr_uint64 * {
+  char *b;
+  size_t index;
+  PyObject *p, *fast = PySequence_Fast($input, "Type mismatch."
+                    " Expected a (bytearray, index) sequence");
+  if (PySequence_Fast_GET_SIZE(fast) != 2) {
+    PyErr_SetString(PyExc_ValueError, "Type mismatch."
+                    " Expected a (bytearray, index) sequence");
+    return NULL;
+  }
+  p = PySequence_Fast_GET_ITEM(fast, 0);
+  b = PyByteArray_AsString(p);
+  index = (size_t)PyInt_AsLong(PySequence_Fast_GET_ITEM(fast, 1));
+  if (index >= PyByteArray_Size(p)) {
+    PyErr_SetString(PyExc_ValueError, "Wrong index");
+    return NULL;
+  }
+  $1 = (stun_attr_uint64*)(&b[index]);
+}
 uint64_t stun_attr_uint64_read(const stun_attr_uint64 *attr);
+
+%typemap(in) const stun_attr_errcode * {
+  char *b;
+  size_t index;
+  PyObject *p, *fast = PySequence_Fast($input, "Type mismatch."
+                    " Expected a (bytearray, index) sequence");
+  if (PySequence_Fast_GET_SIZE(fast) != 2) {
+    PyErr_SetString(PyExc_ValueError, "Type mismatch."
+                    " Expected a (bytearray, index) sequence");
+    return NULL;
+  }
+  p = PySequence_Fast_GET_ITEM(fast, 0);
+  b = PyByteArray_AsString(p);
+  index = (size_t)PyInt_AsLong(PySequence_Fast_GET_ITEM(fast, 1));
+  if (index >= PyByteArray_Size(p)) {
+    PyErr_SetString(PyExc_ValueError, "Wrong index");
+    return NULL;
+  }
+  $1 = (stun_attr_errcode*)(&b[index]);
+}
 int stun_attr_errcode_status(const stun_attr_errcode *attr);
 const char *stun_attr_errcode_reason(const stun_attr_errcode *attr);
 size_t stun_attr_errcode_reason_len(const stun_attr_errcode *attr);
+
+%typemap(in) const stun_attr_unknown * {
+  char *b;
+  size_t index;
+  PyObject *p, *fast = PySequence_Fast($input, "Type mismatch."
+                    " Expected a (bytearray, index) sequence");
+  if (PySequence_Fast_GET_SIZE(fast) != 2) {
+    PyErr_SetString(PyExc_ValueError, "Type mismatch."
+                    " Expected a (bytearray, index) sequence");
+    return NULL;
+  }
+  p = PySequence_Fast_GET_ITEM(fast, 0);
+  b = PyByteArray_AsString(p);
+  index = (size_t)PyInt_AsLong(PySequence_Fast_GET_ITEM(fast, 1));
+  if (index >= PyByteArray_Size(p)) {
+    PyErr_SetString(PyExc_ValueError, "Wrong index");
+    return NULL;
+  }
+  $1 = (stun_attr_unknown*)(&b[index]);
+}
 size_t stun_attr_unknown_count(const stun_attr_unknown *attr);
 uint16_t stun_attr_unknown_get(const stun_attr_unknown *attr, size_t n);
+
+%typemap(in) const stun_attr_msgint * {
+  char *b;
+  size_t index;
+  PyObject *p, *fast = PySequence_Fast($input, "Type mismatch."
+                    " Expected a (bytearray, index) sequence");
+  if (PySequence_Fast_GET_SIZE(fast) != 2) {
+    PyErr_SetString(PyExc_ValueError, "Type mismatch."
+                    " Expected a (bytearray, index) sequence");
+    return NULL;
+  }
+  p = PySequence_Fast_GET_ITEM(fast, 0);
+  b = PyByteArray_AsString(p);
+  index = (size_t)PyInt_AsLong(PySequence_Fast_GET_ITEM(fast, 1));
+  if (index >= PyByteArray_Size(p)) {
+    PyErr_SetString(PyExc_ValueError, "Wrong index");
+    return NULL;
+  }
+  $1 = (stun_attr_msgint*)(&b[index]);
+}
 int stun_attr_msgint_check(const stun_attr_msgint *msgint,
                            const stun_msg_hdr *msg_hdr,
                            const uint8_t *key, size_t key_len);
-void stun_genkey(const void *username, size_t username_len,
-                 const void *realm, size_t realm_len,
-                 const void *password, size_t password_len,
-                 uint8_t key[16]);
+
+%typemap(argout) uint8_t *KeyOut {
+  $result = PyString_FromStringAndSize((const char*)$1, 16);
+}
+%typemap(in,numinputs=0) uint8_t *KeyOut(uint8_t temp[16]) {
+  $1 = temp;
+}
+void stun_genkey(const void *Buf, size_t BufSize,
+                 const void *Buf, size_t BufSize,
+                 const void *Buf, size_t BufSize,
+                 uint8_t *KeyOut);
+
 int stun_attr_fingerprint_check(const stun_attr_uint32 *fingerprint,
                                 const stun_msg_hdr *msg_hdr);
