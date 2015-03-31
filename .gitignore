@@ -1,0 +1,5 @@
+python/build
+*.pyc
+*.so
+python/stunmsg/stunmsg_c.py
+python/stunmsg/stunmsg_c_wrap.c

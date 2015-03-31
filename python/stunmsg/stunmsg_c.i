@@ -409,13 +409,22 @@ int stun_attr_xor_sockaddr_read(const stun_attr_xor_sockaddr *attr,
 }
 
 inline %{
-PyObject *varsize_read(const stun_attr_varsize *attr) {
+PyObject *string_read(const stun_attr_varsize *attr) {
   size_t len = stun_attr_len(&attr->hdr);
   const void *data = stun_attr_varsize_read(attr);
   return PyString_FromStringAndSize((const char*)data, len);
 }
 %}
-PyObject *varsize_read(const stun_attr_varsize *attr);
+PyObject *string_read(const stun_attr_varsize *attr);
+
+inline %{
+PyObject *data_read(const stun_attr_varsize *attr) {
+  size_t len = stun_attr_len(&attr->hdr);
+  const void *data = stun_attr_varsize_read(attr);
+  return PyByteArray_FromStringAndSize((const char*)data, len);
+}
+%}
+PyObject *data_read(const stun_attr_varsize *attr);
 
 %typemap(in) const stun_attr_uint8 * {
   char *b;
@@ -521,8 +530,14 @@ uint64_t stun_attr_uint64_read(const stun_attr_uint64 *attr);
   $1 = (stun_attr_errcode*)(&b[index]);
 }
 int stun_attr_errcode_status(const stun_attr_errcode *attr);
-const char *stun_attr_errcode_reason(const stun_attr_errcode *attr);
-size_t stun_attr_errcode_reason_len(const stun_attr_errcode *attr);
+
+%inline %{
+PyObject *errcode_reason(const stun_attr_errcode *attr) {
+  return PyString_FromStringAndSize(
+    stun_attr_errcode_reason(attr), stun_attr_errcode_reason_len(attr));
+}
+%}
+PyObject *errcode_reason(const stun_attr_errcode *attr);
 
 %typemap(in) const stun_attr_unknown * {
   char *b;
