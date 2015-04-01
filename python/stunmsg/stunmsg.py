@@ -132,12 +132,16 @@ class StunMsg(object):
     stunmsg_c.STUN_ATTR_CONNECTION_ID       : 'uint32',
     stunmsg_c.STUN_ATTR_SOFTWARE            : 'string',
     stunmsg_c.STUN_ATTR_ALTERNATE_SERVER    : 'sockaddr',
-    stunmsg_c.STUN_ATTR_FINGERPRINT         : 'uint32',
+    stunmsg_c.STUN_ATTR_FINGERPRINT         : 'fingerprint',
     stunmsg_c.STUN_ATTR_ICE_CONTROLLED      : 'uint64',
     stunmsg_c.STUN_ATTR_ICE_CONTROLLING     : 'uint64',
     stunmsg_c.STUN_ATTR_RESPONSE_ORIGIN     : 'sockaddr',
     stunmsg_c.STUN_ATTR_OTHER_ADDRESS       : 'sockaddr',
   }
+
+  @staticmethod
+  def hashkey(username, realm, password):
+    return stunmsg_c.stun_genkey(username, realm, password)
 
   def __init__(self, msg_type=None, tsx_id=None, buf=bytearray(20)):
     assert type(buf) is bytearray
@@ -157,103 +161,109 @@ class StunMsg(object):
   def iterattrs(self):
     i = stunmsg_c.next_attr(self.buf, 0)
     while (i != None):
-      yield self._get_attr(i)
+      yield self._get_attrs(i)
+      i = stunmsg_c.next_attr(self.buf, i)
 
-  def appendattr(attr_type, value):
-    valtype = translators[attr_type]
+  def appendattr(self, attr_type, value=None):
+    valtype = self.translators[attr_type]
     if valtype == None:
       valtype = 'data' # defaults to data
     return getattr(self, '_append_' + valtype)(attr_type, value)
 
   def _get_attrs(self, i):
-    attr_type = stunmsg_c.stun_attr_type(self.buf, i)
+    attr_type = stunmsg_c.stun_attr_type((self.buf, i))
     return (attr_type, self._get_attr_type(attr_type, i))
 
   def _get_attr_type(self, attr_type, i):
-    valtype = translators[attr_type]
+    valtype = self.translators[attr_type]
     if valtype == None:
       valtype = 'data' # defaults to data
     return getattr(self, '_get_' + valtype)(i)
 
-  def _get_empty():
+  def _get_empty(self):
     return None
 
-  def _append_empty(attr_type, value):
+  def _append_empty(self, attr_type, value):
     self.buf[len(self.buf):] = bytearray(4)
     stunmsg_c.stun_attr_empty_add(self.buf, attr_type)
 
-  def _get_errcode(i):
+  def _get_errcode(self, i):
     status_code = stunmsg_c.stun_attr_errcode_status((self.buf, i));
     status_text = stunmsg_c.errcode_reason((self.buf, i));
     return (status_code, status_text)
 
-  def _append_errcode(attr_type, value):
+  def _append_errcode(self, attr_type, value):
     status_code, status_text = value
     self.buf[len(self.buf):] = \
         bytearray(stunmsg_c.stun_attr_error_code_size(len(status_text)))
     stunmsg_c.stun_attr_errcode_add(self.buf, status_code, status_text, 0)
 
-  def _get_uint8(i):
+  def _get_uint8(self, i):
     return stunmsg_c.stun_attr_uint8_read((self.buf, i))
 
-  def _append_uint8(attr_type, value):
+  def _append_uint8(self, attr_type, value):
     self.buf[len(self.buf):] = bytearray(stunmsg_c.stun_attr_uint8_size)
     stunmsg_c.stun_attr_uint8_add(self.buf, attr_type, value)
 
-  def _get_uint16(i):
+  def _get_uint16(self, i):
     return stunmsg_c.stun_attr_uint16_read((self.buf, i))
 
-  def _append_uint16(attr_type, value):
+  def _append_uint16(self, attr_type, value):
     self.buf[len(self.buf):] = bytearray(stunmsg_c.stun_attr_uint16_size)
     stunmsg_c.stun_attr_uint16_add(self.buf, attr_type, value)
 
-  def _get_uint32(i):
+  def _get_uint32(self, i):
     return stunmsg_c.stun_attr_uint32_read((self.buf, i))
 
-  def _append_uint32(attr_type, value):
+  def _append_uint32(self, attr_type, value):
     self.buf[len(self.buf):] = bytearray(stunmsg_c.stun_attr_uint32_size)
     stunmsg_c.stun_attr_uint32_add(self.buf, attr_type, value)
 
-  def _get_uint64(i):
+  def _get_uint64(self, i):
     return stunmsg_c.stun_attr_uint64_read((self.buf, i))
 
-  def _append_uint64(attr_type, value):
+  def _append_uint64(self, attr_type, value):
     self.buf[len(self.buf):] = bytearray(stunmsg_c.stun_attr_uint64_size)
     stunmsg_c.stun_attr_uint64_add(self.buf, attr_type, value)
 
-  def _get_unknown(i):
+  def _get_unknown(self, i):
     len = stunmsg_c.stun_attr_unknown_count((self.buf, i))
     result = []
     for n in range(0, len):
       result.append(stunmsg_c.stun_attr_unknown_get((self.buf, i), n))
     return result
 
-  def _append_unknown(attr_type, value):
+  def _append_unknown(self, attr_type, value):
     self.buf[len(self.buf):] = \
         bytearray(stunmsg_c.stun_attr_unknown_size(len(value)))
-    stunmsg_c.stun_attr_unknown_add(self.buf, attr_type, value, 0)
+    stunmsg_c.stun_attr_unknown_add(self.buf, value, 0)
 
-  def _get_string(i):
+  def _get_string(self, i):
     return stunmsg_c.string_read((self.buf, i))
 
-  def _append_string(attr_type, value):
+  def _append_string(self, attr_type, value):
+    if type(value) is tuple:
+      s, pad = value
+    else:
+      s = value
+      pad = 0
     self.buf[len(self.buf):] = \
-        bytearray(stunmsg_c.stun_attr_varsize_size(len(value)))
-    stunmsg_c.stun_attr_varsize_add(self.buf, attr_type, value, 0)
+        bytearray(stunmsg_c.stun_attr_varsize_size(len(s)))
+    stunmsg_c.stun_attr_varsize_add(self.buf, attr_type, s, pad)
 
-  def _get_data(i):
+  def _get_data(self, i):
     return stunmsg_c.data_read((self.buf, i))
 
-  def _append_data(attr_type, value):
+  def _append_data(self, attr_type, value):
     self.buf[len(self.buf):] = \
         bytearray(stunmsg_c.stun_attr_varsize_size(len(value)))
     stunmsg_c.stun_attr_varsize_add(self.buf, attr_type, value, 0)
 
-  def _get_sockaddr(i):
-    res, addr = stun_attr_sockaddr_read((self.buf, i))
+  def _get_sockaddr(self, i):
+    res, addr = stunmsg_c.stun_attr_sockaddr_read((self.buf, i))
     return addr if res == 0 else None
 
-  def _append_sockaddr(attr_type, value):
+  def _append_sockaddr(self, attr_type, value):
     addr, port = value
     if len(addr.split(':')) == 0:
       family = stunmsg_c.STUN_IPV4
@@ -263,11 +273,11 @@ class StunMsg(object):
         bytearray(stunmsg_c.stun_attr_sockaddr_size(family))
     stunmsg_c.stun_attr_sockaddr_add(self.buf, attr_type, (addr, port))
 
-  def _get_xor_sockaddr(i):
-    res, addr = stun_attr_xor_sockaddr_read((self.buf, i), self.buf)
+  def _get_xor_sockaddr(self, i):
+    res, addr = stunmsg_c.stun_attr_xor_sockaddr_read((self.buf, i), self.buf)
     return addr if res == 0 else None
 
-  def _append_xor_sockaddr(attr_type, value):
+  def _append_xor_sockaddr(self, attr_type, value):
     addr, port = value
     if len(addr.split(':')) == 0:
       family = stunmsg_c.STUN_IPV4
@@ -277,23 +287,22 @@ class StunMsg(object):
         bytearray(stunmsg_c.stun_attr_sockaddr_size(family))
     stunmsg_c.stun_attr_xor_sockaddr_add(self.buf, attr_type, (addr, port))
 
-  def _get_msgint(i):
+  def _get_msgint(self, i):
     def check(password):
       res = stunmsg_c.stun_attr_msgint_check((self.buf, i), self.buf, password)
       return True if res == 1 else False
     return check
 
-  def _append_msgint(attr_type, key):
+  def _append_msgint(self, attr_type, key):
     self.buf[len(self.buf):] = bytearray(stunmsg_c.stun_attr_msgint_size)
     stunmsg_c.stun_attr_msgint_add(self.buf, key)
 
-  def _get_fingerprint(i):
-    def check():
-      res = stunmsg_c.stun_attr_fingerprint_check((self.buf, i), self.buf)
-      return True if res == 1 else False
-    return check
+  def _get_fingerprint(self, i):
+    res = stunmsg_c.stun_attr_fingerprint_check((self.buf, i), self.buf)
+    return True if res == 1 else False
 
-  def _append_fingerprint(attr_type, key):
+  def _append_fingerprint(self, attr_type, value):
+    _ = attr_type, value
     self.buf[len(self.buf):] = bytearray(stunmsg_c.stun_attr_fingerprint_size)
     stunmsg_c.stun_attr_fingerprint_add(self.buf)
 

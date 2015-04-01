@@ -149,21 +149,29 @@ const char *stun_class_name(uint16_t type);
 %typemap(in) uint8_t {
   $1 = (uint8_t)PyInt_AsLong($input);
 }
+%typemap(out) uint8_t {
+  $result = PyInt_FromLong($1);
+}
 
 %typemap(in) uint16_t {
   $1 = (uint16_t)PyInt_AsLong($input);
+}
+%typemap(out) uint16_t {
+  $result = PyInt_FromLong($1);
 }
 
 %typemap(in) uint32_t {
   $1 = (uint32_t)PyInt_AsLong($input);
 }
+%typemap(out) uint32_t {
+  $result = PyInt_FromLong($1);
+}
 
 %typemap(in) uint64_t {
   $1 = (uint64_t)PyLong_AsUnsignedLongLong($input);
 }
-
-%typemap(out) uint16_t {
-  $result = PyInt_FromLong($1);
+%typemap(out) uint64_t {
+  $result = PyLong_FromUnsignedLongLong($1);
 }
 
 %typemap(in) const uint8_t[12] {
@@ -185,6 +193,20 @@ const char *stun_class_name(uint16_t type);
     $2 = (size_t)PyByteArray_Size($input);
   } else if (PyString_Check($input)) {
     $1 = PyString_AsString($input);
+    $2 = (size_t)PyString_Size($input);
+  } else {
+    PyErr_SetString(PyExc_ValueError, "Type mismatch."
+                    " Expected bytearray or string object");
+    return NULL;
+  }
+}
+
+%typemap(in) (const uint8_t *Buf, size_t BufSize) {
+  if (PyByteArray_Check($input)) {
+    $1 = (uint8_t *)PyByteArray_AsString($input);
+    $2 = (size_t)PyByteArray_Size($input);
+  } else if (PyString_Check($input)) {
+    $1 = (uint8_t *)PyString_AsString($input);
     $2 = (size_t)PyString_Size($input);
   } else {
     PyErr_SetString(PyExc_ValueError, "Type mismatch."
@@ -390,9 +412,28 @@ PyObject *find_attr(const stun_msg_hdr *msg_hdr, uint16_t type);
   }
   $1 = (stun_attr_sockaddr*)(&b[index]);
 }
-
 int stun_attr_sockaddr_read(const stun_attr_sockaddr *attr,
                             struct sockaddr *SockAddrOut);
+
+%typemap(in) const stun_attr_xor_sockaddr * {
+  char *b;
+  size_t index;
+  PyObject *p, *fast = PySequence_Fast($input, "Type mismatch."
+                    " Expected a (bytearray, index) sequence");
+  if (PySequence_Fast_GET_SIZE(fast) != 2) {
+    PyErr_SetString(PyExc_ValueError, "Type mismatch."
+                    " Expected a (bytearray, index) sequence");
+    return NULL;
+  }
+  p = PySequence_Fast_GET_ITEM(fast, 0);
+  b = PyByteArray_AsString(p);
+  index = (size_t)PyInt_AsLong(PySequence_Fast_GET_ITEM(fast, 1));
+  if (index >= PyByteArray_Size(p)) {
+    PyErr_SetString(PyExc_ValueError, "Wrong index");
+    return NULL;
+  }
+  $1 = (stun_attr_xor_sockaddr*)(&b[index]);
+}
 int stun_attr_xor_sockaddr_read(const stun_attr_xor_sockaddr *attr,
                                 const stun_msg_hdr *msg_hdr,
                                 struct sockaddr *SockAddrOut);
@@ -589,9 +630,6 @@ uint16_t stun_attr_unknown_get(const stun_attr_unknown *attr, size_t n);
   }
   $1 = (stun_attr_msgint*)(&b[index]);
 }
-int stun_attr_msgint_check(const stun_attr_msgint *msgint,
-                           const stun_msg_hdr *msg_hdr,
-                           const uint8_t *key, size_t key_len);
 
 %typemap(argout) uint8_t *KeyOut {
   $result = PyString_FromStringAndSize((const char*)$1, 16);
@@ -599,6 +637,9 @@ int stun_attr_msgint_check(const stun_attr_msgint *msgint,
 %typemap(in,numinputs=0) uint8_t *KeyOut(uint8_t temp[16]) {
   $1 = temp;
 }
+int stun_attr_msgint_check(const stun_attr_msgint *msgint,
+                           const stun_msg_hdr *msg_hdr,
+                           const uint8_t *Buf, size_t BufSize);
 void stun_genkey(const void *Buf, size_t BufSize,
                  const void *Buf, size_t BufSize,
                  const void *Buf, size_t BufSize,
@@ -624,16 +665,16 @@ int stun_attr_unknown_size(int count) {
   return STUN_ATTR_UNKNOWN_SIZE(count);
 }
 %}
-
-%constant stun_attr_uint8_size  (4+4) 
-%constant stun_attr_uint16_size (4+4)
-%constant stun_attr_uint32_size (4+4)
-%constant stun_attr_uint64_size (4+8)
-%constant stun_attr_msgint_size (4+20)
-%constant stun_attr_fingerprint_size (4+4)
-
 int stun_attr_sockaddr_size(int addr_type);
 int stun_attr_varsize_size(int length);
 int stun_attr_error_code_size(int reason_length);
 int stun_attr_unknown_size(int count);
+
+#define stun_attr_uint8_size  (4+4)
+#define stun_attr_uint16_size (4+4)
+#define stun_attr_uint32_size (4+4)
+#define stun_attr_uint64_size (4+8)
+#define stun_attr_msgint_size (4+20)
+#define stun_attr_fingerprint_size (4+4)
+
 
