@@ -597,3 +597,34 @@ void stun_genkey(const void *Buf, size_t BufSize,
 
 int stun_attr_fingerprint_check(const stun_attr_uint32 *fingerprint,
                                 const stun_msg_hdr *msg_hdr);
+
+%inline %{
+int stun_attr_sockaddr_size(int addr_type) {
+  return STUN_ATTR_SOCKADDR_SIZE(addr_type);
+}
+
+int stun_attr_varsize_size(int length) {
+  return STUN_ATTR_VARSIZE_SIZE(length);
+}
+
+int stun_attr_error_code_size(int reason_length) {
+  return STUN_ATTR_ERROR_CODE_SIZE(reason_length);
+}
+
+int stun_attr_unknown_size(int count) {
+  return STUN_ATTR_UNKNOWN_SIZE(count);
+}
+%}
+
+%constant stun_attr_uint8_size  (4+4) 
+%constant stun_attr_uint16_size (4+4)
+%constant stun_attr_uint32_size (4+4)
+%constant stun_attr_uint64_size (4+8)
+%constant stun_attr_msgint_size (4+20)
+%constant stun_attr_fingerprint_size (4+4)
+
+int stun_attr_sockaddr_size(int addr_type);
+int stun_attr_varsize_size(int length);
+int stun_attr_error_code_size(int reason_length);
+int stun_attr_unknown_size(int count);
+

@@ -6,4 +6,6 @@
 # dedication to be an overt act of relinquishment in perpetuity of all
 # present and future rights to this software under copyright law.
 
-__all__ = [ 'stunmsg' ]
+from .stunmsg import StunMsg
+
+__version__ = '1.0'
