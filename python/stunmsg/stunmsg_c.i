@@ -187,19 +187,12 @@ const char *stun_class_name(uint16_t type);
   $1 = (uint8_t*)PyByteArray_AS_STRING($input);
 }
 
-%typemap(argout) uint8_t *TsxId {
-  $result = PyByteArray_FromStringAndSize((const char*)$1, 12);
-}
-%typemap(in,numinputs=0) uint8_t *TsxId(uint8_t temp[12]) {
-  $1 = temp;
-}
-
 %inline %{
-void get_tsx_id(const stun_msg_hdr *header, uint8_t *TsxId) {
-  memcpy(TsxId, header->tsx_id, 12);
+PyObject *get_tsx_id(const stun_msg_hdr *header) {
+  return PyByteArray_FromStringAndSize((const char*)header->tsx_id, 12);
 }
 %}
-void get_tsx_id(const stun_msg_hdr *header, uint8_t *TsxId);
+PyObject *get_tsx_id(const stun_msg_hdr *header);
 
 %inline %{
 uint32_t get_magic(const stun_msg_hdr *header) {
