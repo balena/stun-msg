@@ -185,6 +185,9 @@ class StunMsg(object):
     else:
       self._buf = data
     if msg_type != None and tsx_id != None:
+      assert type(msg_type) is int
+      if type(tsx_id) is str:
+        tsx_id = bytearray(tsx_id)
       stunmsg_c.stun_msg_hdr_init(self._buf, msg_type, tsx_id)
 
   @property

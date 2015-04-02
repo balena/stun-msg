@@ -19,4 +19,5 @@ setup(
     include_dirs=["../include"]
   )],
   py_modules=['stunmsg/stunmsg_c'],
+  scripts=['nat_type'],
 )

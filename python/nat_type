@@ -1,0 +1,21 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+# Copyright (C) 2015 Guilherme Versiani <guibv@yahoo.com>
+#
+# I dedicate any and all copyright interest in this software to the
+# public domain. I make this dedication for the benefit of the public at
+# large and to the detriment of my heirs and successors. I intend this
+# dedication to be an overt act of relinquishment in perpetuity of all
+# present and future rights to this software under copyright law.
+
+import sys
+
+try:
+    from stunmsg.nat_type import run
+except ImportError:
+    sys.stderr.write("abort: couldn't find stunmsg libraries in [%s]\n" %
+                     ' '.join(sys.path))
+    sys.stderr.write("(check your install and PYTHONPATH)\n")
+    sys.exit(-1)
+
+sys.exit(run())
