@@ -3,11 +3,11 @@
 from distutils.core import setup, Extension
 
 setup(
-  name = "stunmsg_c",
+  name = "stunmsg",
   version = "1.0",
   author = "G. B. Versiani <guibv@yahoo.com>",
   description = "Public domain implementation of STUN message",
-  ext_modules=[Extension('stunmsg/_stunmsg_c', [
+  ext_modules = [Extension('stunmsg/_stunmsg_c', [
       'stunmsg/stunmsg_c.i',
       '../src/crc32.c',
       '../src/hmac_sha1.c',
@@ -18,6 +18,7 @@ setup(
     swig_opts=['-modern', '-I../include'],
     include_dirs=["../include"]
   )],
-  py_modules=['stunmsg/stunmsg_c'],
-  scripts=['nat_type'],
+  packages = ['stunmsg'],
+  scripts = ['nat_type'],
 )
+
