@@ -26,17 +26,19 @@ class TestStunMsg(unittest.TestCase):
       b'\x6a\x8e\xf1\xe2'
     ]))
 
-    msg = StunMsg(buf=expected_result)
-    self.assertEqual(len(msg.data()), 20)
+    msg = StunMsg(data=expected_result)
+    self.assertEqual(len(msg.data), 20)
     self.assertTrue(msg.verify())
 
     msg = StunMsg(StunMsg.BINDING_REQUEST, tsx_id)
 
-    self.assertEqual(msg.data(), expected_result)
+    self.assertEqual(msg.data, expected_result)
 
     # Now decoding
-    self.assertEqual(StunMsg.BINDING_REQUEST, msg.type())
-    self.assertEqual(len(msg.data()), len(expected_result))
+    self.assertEqual(StunMsg.BINDING_REQUEST, msg.type)
+    self.assertEqual(StunMsg.MAGIC_COOKIE, msg.magic_cookie)
+    self.assertEqual(tsx_id, msg.tsx_id)
+    self.assertEqual(len(msg.data), len(expected_result))
 
     it = msg.iterattrs()
     with self.assertRaises(StopIteration):
@@ -84,8 +86,8 @@ class TestStunMsg(unittest.TestCase):
       b'\xfa\x87\xdf\xae',
     ]))
 
-    msg = StunMsg(buf=expected_result)
-    self.assertEqual(len(msg.data()), len(expected_result))
+    msg = StunMsg(data=expected_result)
+    self.assertEqual(len(msg.data), len(expected_result))
     self.assertTrue(msg.verify())
 
     msg = StunMsg(StunMsg.BINDING_REQUEST, tsx_id)
@@ -96,12 +98,14 @@ class TestStunMsg(unittest.TestCase):
     msg.appendattr(StunMsg.ATTR_MESSAGE_INTEGRITY, password)
     msg.appendattr(StunMsg.ATTR_FINGERPRINT)
 
-    self.assertEqual(msg.data(), expected_result)
+    self.assertEqual(msg.data, expected_result)
 
     # Now decoding
-    msg = StunMsg(buf=expected_result)
-    self.assertEqual(StunMsg.BINDING_REQUEST, msg.type())
-    self.assertEqual(len(expected_result), len(msg.data()))
+    msg = StunMsg(data=expected_result)
+    self.assertEqual(StunMsg.BINDING_REQUEST, msg.type)
+    self.assertEqual(StunMsg.MAGIC_COOKIE, msg.magic_cookie)
+    self.assertEqual(tsx_id, msg.tsx_id)
+    self.assertEqual(len(expected_result), len(msg.data))
 
     it = msg.iterattrs()
 
@@ -168,8 +172,8 @@ class TestStunMsg(unittest.TestCase):
 
     ipv4 = ("192.0.2.1", 32853)
 
-    msg = StunMsg(buf=expected_result)
-    self.assertEqual(len(msg.data()), len(expected_result))
+    msg = StunMsg(data=expected_result)
+    self.assertEqual(len(msg.data), len(expected_result))
     self.assertTrue(msg.verify())
 
     msg = StunMsg(StunMsg.BINDING_RESPONSE, tsx_id)
@@ -178,12 +182,14 @@ class TestStunMsg(unittest.TestCase):
     msg.appendattr(StunMsg.ATTR_MESSAGE_INTEGRITY, password)
     msg.appendattr(StunMsg.ATTR_FINGERPRINT)
 
-    self.assertEqual(msg.data(), expected_result)
+    self.assertEqual(msg.data, expected_result)
 
     # Now decoding
-    msg = StunMsg(buf=expected_result)
-    self.assertEqual(StunMsg.BINDING_RESPONSE, msg.type())
-    self.assertEqual(len(expected_result), len(msg.data()))
+    msg = StunMsg(data=expected_result)
+    self.assertEqual(StunMsg.BINDING_RESPONSE, msg.type)
+    self.assertEqual(StunMsg.MAGIC_COOKIE, msg.magic_cookie)
+    self.assertEqual(tsx_id, msg.tsx_id)
+    self.assertEqual(len(expected_result), len(msg.data))
 
     it = msg.iterattrs()
 
@@ -245,8 +251,8 @@ class TestStunMsg(unittest.TestCase):
 
     ipv6 = ("2001:db8:1234:5678:11:2233:4455:6677", 32853)
 
-    msg = StunMsg(buf=expected_result)
-    self.assertEqual(len(msg.data()), len(expected_result))
+    msg = StunMsg(data=expected_result)
+    self.assertEqual(len(msg.data), len(expected_result))
     self.assertTrue(msg.verify())
 
     msg = StunMsg(StunMsg.BINDING_RESPONSE, tsx_id)
@@ -255,12 +261,14 @@ class TestStunMsg(unittest.TestCase):
     msg.appendattr(StunMsg.ATTR_MESSAGE_INTEGRITY, password)
     msg.appendattr(StunMsg.ATTR_FINGERPRINT)
 
-    self.assertEqual(msg.data(), expected_result)
+    self.assertEqual(msg.data, expected_result)
 
     # Now decoding
-    msg = StunMsg(buf=expected_result)
-    self.assertEqual(StunMsg.BINDING_RESPONSE, msg.type())
-    self.assertEqual(len(expected_result), len(msg.data()))
+    msg = StunMsg(data=expected_result)
+    self.assertEqual(StunMsg.BINDING_RESPONSE, msg.type)
+    self.assertEqual(StunMsg.MAGIC_COOKIE, msg.magic_cookie)
+    self.assertEqual(tsx_id, msg.tsx_id)
+    self.assertEqual(len(expected_result), len(msg.data))
 
     it = msg.iterattrs()
 
@@ -337,8 +345,8 @@ class TestStunMsg(unittest.TestCase):
 
     key = StunMsg.hashkey(username, realm, password)
 
-    msg = StunMsg(buf=expected_result)
-    self.assertEqual(len(msg.data()), len(expected_result))
+    msg = StunMsg(data=expected_result)
+    self.assertEqual(len(msg.data), len(expected_result))
     self.assertTrue(msg.verify())
 
     msg = StunMsg(StunMsg.BINDING_REQUEST, tsx_id)
@@ -347,12 +355,14 @@ class TestStunMsg(unittest.TestCase):
     msg.appendattr(StunMsg.ATTR_REALM, realm)
     msg.appendattr(StunMsg.ATTR_MESSAGE_INTEGRITY, key)
 
-    self.assertEqual(msg.data(), expected_result)
+    self.assertEqual(msg.data, expected_result)
 
     # Now decoding
-    msg = StunMsg(buf=expected_result)
-    self.assertEqual(StunMsg.BINDING_REQUEST, msg.type())
-    self.assertEqual(len(expected_result), len(msg.data()))
+    msg = StunMsg(data=expected_result)
+    self.assertEqual(StunMsg.BINDING_REQUEST, msg.type)
+    self.assertEqual(StunMsg.MAGIC_COOKIE, msg.magic_cookie)
+    self.assertEqual(tsx_id, msg.tsx_id)
+    self.assertEqual(len(expected_result), len(msg.data))
 
     it = msg.iterattrs()
 
@@ -403,20 +413,22 @@ class TestStunMsg(unittest.TestCase):
     ]))
     unknown = [ 0x001a, 0x001b, 0x802c ]
 
-    msg = StunMsg(buf=expected_result)
-    self.assertEqual(len(msg.data()), len(expected_result))
+    msg = StunMsg(data=expected_result)
+    self.assertEqual(len(msg.data), len(expected_result))
     self.assertTrue(msg.verify())
 
     msg = StunMsg(StunMsg.BINDING_ERROR_RESPONSE, tsx_id)
     msg.appendattr(StunMsg.ATTR_ERROR_CODE, (420, reason_phrase))
     msg.appendattr(StunMsg.ATTR_UNKNOWN_ATTRIBUTES, unknown)
 
-    self.assertEqual(msg.data(), expected_result)
+    self.assertEqual(msg.data, expected_result)
 
     # Now decoding
-    msg = StunMsg(buf=expected_result)
-    self.assertEqual(StunMsg.BINDING_ERROR_RESPONSE, msg.type())
-    self.assertEqual(len(expected_result), len(msg.data()))
+    msg = StunMsg(data=expected_result)
+    self.assertEqual(StunMsg.BINDING_ERROR_RESPONSE, msg.type)
+    self.assertEqual(StunMsg.MAGIC_COOKIE, msg.magic_cookie)
+    self.assertEqual(tsx_id, msg.tsx_id)
+    self.assertEqual(len(expected_result), len(msg.data))
 
     it = msg.iterattrs()
 
@@ -436,3 +448,4 @@ class TestStunMsg(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

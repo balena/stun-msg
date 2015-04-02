@@ -9,6 +9,12 @@
 import stunmsg_c
 
 class StunMsg(object):
+  """A STUN message.
+
+  This class is used to encode or decode STUN messages from the wire format.
+  """
+
+  MAGIC_COOKIE = stunmsg_c.STUN_MAGIC_COOKIE
 
   BINDING_REQUEST                   = stunmsg_c.STUN_BINDING_REQUEST                  
   BINDING_RESPONSE                  = stunmsg_c.STUN_BINDING_RESPONSE                 
@@ -98,7 +104,7 @@ class StunMsg(object):
   ERROR_SERVER_ERROR              = stunmsg_c.STUN_ERROR_SERVER_ERROR
   ERROR_INSUFFICIENT_CAPACITY     = stunmsg_c.STUN_ERROR_INSUFFICIENT_CAPACITY
 
-  translators = {
+  _translators = {
     stunmsg_c.STUN_ATTR_MAPPED_ADDRESS      : 'sockaddr',
     stunmsg_c.STUN_ATTR_RESPONSE_ADDRESS    : 'sockaddr',
     stunmsg_c.STUN_ATTR_CHANGE_REQUEST      : 'uint32',
@@ -141,105 +147,210 @@ class StunMsg(object):
 
   @staticmethod
   def hashkey(username, realm, password):
+    """Gets the hash key used in long term credentials.
+
+    Calculates the key used for long term credentials for using with the
+    MESSAGE-INTEGRITY attribute; MD5(user:realm:pass).
+    """
     return stunmsg_c.stun_genkey(username, realm, password)
 
-  def __init__(self, msg_type=None, tsx_id=None, buf=bytearray(20)):
-    assert type(buf) is bytearray
-    self.buf = buf
+  @staticmethod
+  def getlength(buf):
+    """Gets the STUN message length (including the header).
+
+    Use this function to obtain the STUN message size from the STUN message
+    header. You must pass a buffer >= 20 bytes, but it doesn't need to contain
+    the whole message data.
+    """
+    assert len(buf) >= 20
+    return stunmsg_c.stun_msg_len(buf)
+
+  def __init__(self, msg_type=None, tsx_id=None, data=bytearray(20)):
+    """Initializes the StunMsg object.
+
+    The initialization can be of two 'modes': read a received message, or
+    create a new message. In the first case, you have to initialize only the
+    'data' parameter, while the latter you have to pass both 'msg_type' and
+    'tsx_id'.
+
+    Args:
+        msg_type: The STUN message type (BINDING_REQUEST, etc).
+        tsx_id: The STUN transaction ID. Must be of bytearray type and must
+            have exactly 12 bytes.
+        data: a bytearray or str object containing the STUN message to read.
+    """
+    assert type(data) in (bytearray, str)
+    if type(data) is str:
+      self._buf = bytearray(data)
+    else:
+      self._buf = data
     if msg_type != None and tsx_id != None:
-      stunmsg_c.stun_msg_hdr_init(self.buf, msg_type, tsx_id)
+      stunmsg_c.stun_msg_hdr_init(self._buf, msg_type, tsx_id)
 
+  @property
   def data(self):
-    return self.buf[:stunmsg_c.stun_msg_len(self.buf)]
+    """Gets the STUN message packet data.
 
+    The returned bytearray object contains exactly the message size (header +
+    attributes).
+    """
+    return self._buf[:stunmsg_c.stun_msg_len(self._buf)]
+
+  @property
   def type(self):
-    return stunmsg_c.stun_msg_type(self.buf)
+    """Gets the STUN message type."""
+    return stunmsg_c.stun_msg_type(self._buf)
+
+  @property
+  def tsx_id(self):
+    """Gets the transaction ID of message."""
+    return stunmsg_c.get_tsx_id(self._buf)
+
+  @property
+  def magic_cookie(self):
+    """Gets the 'magic integer' from message."""
+    return stunmsg_c.get_magic(self._buf)
 
   def verify(self):
-    return True if stunmsg_c.stun_msg_verify(self.buf, len(self.buf)) == 1 else False
+    """Performs an general verification on the STUN message.
+
+    This function checks the first byte of the message, if the length doesn't
+    exceed the data size, if it's padded to nearest 4 bytes, if the contained
+    attributes don't exceed the message size, and, if available, checks the
+    FINGERPRINT attribute.
+    """
+    return True if stunmsg_c.stun_msg_verify(self._buf, len(self._buf)) == 1 else False
 
   def iterattrs(self):
-    i = stunmsg_c.next_attr(self.buf, 0)
+    """Iterates over the STUN message attributes.
+
+    All values are returned in the form (attr_type, attr_value), where
+    attr_type is the STUN message attribute type (one of the ATTR_*
+    definitions) and attr_value is one of the following:
+        For string attributes: a str value
+        For data attributes: a bytearray value
+        For empty attributes: None
+        For sockaddr and xor_sockaddr attributes: a (addr, port) pair
+        For integer attributes: an integer
+        For 64-bits integer attributes: a long integer
+        For ERROR-CODE attribute: a (status_code, status_text) pair
+        For MESSAGE-INTEGRITY attribute: a function that receives the key
+            and returns whether the integrity check has passed
+        For UNKNOWN-ATTRIBUTES attribute: a list of unknown attribute types
+    """
+    i = stunmsg_c.next_attr(self._buf, 0)
     while (i != None):
       yield self._get_attrs(i)
-      i = stunmsg_c.next_attr(self.buf, i)
+      i = stunmsg_c.next_attr(self._buf, i)
 
   def appendattr(self, attr_type, value=None):
-    valtype = self.translators[attr_type]
+    """Appends an attribute to the STUN message.
+
+    Args:
+	attr_type: STUN message attribute type (one of the StunMsg.ATTR_*
+            defintions).
+        attr_value: it depends of the STUN message attribute type:
+            For empty attributes: unspecified (the attr_value will be ignored)
+            For string attributes: a str value
+            For data attributes: a bytearray value
+            For sockaddr and xor_sockaddr attributes: a (addr, port) pair
+            For integer attributes: an integer
+            For 64-bits integer attributes: a long integer
+            For ERROR-CODE attribute: a (status_code, status_text) pair
+            For MESSAGE-INTEGRITY attribute: the key to sign the message
+            For UNKNOWN-ATTRIBUTES attribute: a list of unknown attribute types
+    """
+    valtype = self._translators[attr_type]
     if valtype == None:
       valtype = 'data' # defaults to data
     return getattr(self, '_append_' + valtype)(attr_type, value)
 
   def _get_attrs(self, i):
-    attr_type = stunmsg_c.stun_attr_type((self.buf, i))
+    attr_type = stunmsg_c.stun_attr_type((self._buf, i))
     return (attr_type, self._get_attr_type(attr_type, i))
 
   def _get_attr_type(self, attr_type, i):
-    valtype = self.translators[attr_type]
+    valtype = self._translators[attr_type]
     if valtype == None:
       valtype = 'data' # defaults to data
     return getattr(self, '_get_' + valtype)(i)
 
-  def _get_empty(self):
+  def _get_empty(self, i):
+    _ = i
     return None
 
   def _append_empty(self, attr_type, value):
-    self.buf[len(self.buf):] = bytearray(4)
-    stunmsg_c.stun_attr_empty_add(self.buf, attr_type)
+    _ = value
+    self._buf[len(self._buf):] = bytearray(4)
+    stunmsg_c.stun_attr_empty_add(self._buf, attr_type)
 
   def _get_errcode(self, i):
-    status_code = stunmsg_c.stun_attr_errcode_status((self.buf, i));
-    status_text = stunmsg_c.errcode_reason((self.buf, i));
+    status_code = stunmsg_c.stun_attr_errcode_status((self._buf, i));
+    status_text = stunmsg_c.errcode_reason((self._buf, i));
     return (status_code, status_text)
 
   def _append_errcode(self, attr_type, value):
     status_code, status_text = value
-    self.buf[len(self.buf):] = \
+    self._buf[len(self._buf):] = \
         bytearray(stunmsg_c.stun_attr_error_code_size(len(status_text)))
-    stunmsg_c.stun_attr_errcode_add(self.buf, status_code, status_text, 0)
+    stunmsg_c.stun_attr_errcode_add(self._buf, status_code, status_text, 0)
 
   def _get_uint8(self, i):
-    return stunmsg_c.stun_attr_uint8_read((self.buf, i))
+    return stunmsg_c.stun_attr_uint8_read((self._buf, i))
 
   def _append_uint8(self, attr_type, value):
-    self.buf[len(self.buf):] = bytearray(stunmsg_c.stun_attr_uint8_size)
-    stunmsg_c.stun_attr_uint8_add(self.buf, attr_type, value)
+    self._buf[len(self._buf):] = bytearray(stunmsg_c.stun_attr_uint8_size)
+    stunmsg_c.stun_attr_uint8_add(self._buf, attr_type, value)
+
+  def _get_uint8_pad(self, i):
+    return self._get_uint8(i)
+
+  def _append_uint8_pad(self, attr_type, value):
+    self._buf[len(self._buf):] = bytearray(stunmsg_c.stun_attr_uint8_size)
+    stunmsg_c.stun_attr_uint8_pad_add(self._buf, attr_type, value, 0)
 
   def _get_uint16(self, i):
-    return stunmsg_c.stun_attr_uint16_read((self.buf, i))
+    return stunmsg_c.stun_attr_uint16_read((self._buf, i))
 
   def _append_uint16(self, attr_type, value):
-    self.buf[len(self.buf):] = bytearray(stunmsg_c.stun_attr_uint16_size)
-    stunmsg_c.stun_attr_uint16_add(self.buf, attr_type, value)
+    self._buf[len(self._buf):] = bytearray(stunmsg_c.stun_attr_uint16_size)
+    stunmsg_c.stun_attr_uint16_add(self._buf, attr_type, value)
+
+  def _get_uint16_pad(self, i):
+    return self._get_uint16_pad(i)
+
+  def _append_uint16_pad(self, attr_type, value):
+    self._buf[len(self._buf):] = bytearray(stunmsg_c.stun_attr_uint16_size)
+    stunmsg_c.stun_attr_uint16_pad_add(self._buf, attr_type, value, 0)
 
   def _get_uint32(self, i):
-    return stunmsg_c.stun_attr_uint32_read((self.buf, i))
+    return stunmsg_c.stun_attr_uint32_read((self._buf, i))
 
   def _append_uint32(self, attr_type, value):
-    self.buf[len(self.buf):] = bytearray(stunmsg_c.stun_attr_uint32_size)
-    stunmsg_c.stun_attr_uint32_add(self.buf, attr_type, value)
+    self._buf[len(self._buf):] = bytearray(stunmsg_c.stun_attr_uint32_size)
+    stunmsg_c.stun_attr_uint32_add(self._buf, attr_type, value)
 
   def _get_uint64(self, i):
-    return stunmsg_c.stun_attr_uint64_read((self.buf, i))
+    return stunmsg_c.stun_attr_uint64_read((self._buf, i))
 
   def _append_uint64(self, attr_type, value):
-    self.buf[len(self.buf):] = bytearray(stunmsg_c.stun_attr_uint64_size)
-    stunmsg_c.stun_attr_uint64_add(self.buf, attr_type, value)
+    self._buf[len(self._buf):] = bytearray(stunmsg_c.stun_attr_uint64_size)
+    stunmsg_c.stun_attr_uint64_add(self._buf, attr_type, value)
 
   def _get_unknown(self, i):
-    len = stunmsg_c.stun_attr_unknown_count((self.buf, i))
+    len = stunmsg_c.stun_attr_unknown_count((self._buf, i))
     result = []
     for n in range(0, len):
-      result.append(stunmsg_c.stun_attr_unknown_get((self.buf, i), n))
+      result.append(stunmsg_c.stun_attr_unknown_get((self._buf, i), n))
     return result
 
   def _append_unknown(self, attr_type, value):
-    self.buf[len(self.buf):] = \
+    self._buf[len(self._buf):] = \
         bytearray(stunmsg_c.stun_attr_unknown_size(len(value)))
-    stunmsg_c.stun_attr_unknown_add(self.buf, value, 0)
+    stunmsg_c.stun_attr_unknown_add(self._buf, value, 0)
 
   def _get_string(self, i):
-    return stunmsg_c.string_read((self.buf, i))
+    return stunmsg_c.string_read((self._buf, i))
 
   def _append_string(self, attr_type, value):
     if type(value) is tuple:
@@ -247,20 +358,20 @@ class StunMsg(object):
     else:
       s = value
       pad = 0
-    self.buf[len(self.buf):] = \
+    self._buf[len(self._buf):] = \
         bytearray(stunmsg_c.stun_attr_varsize_size(len(s)))
-    stunmsg_c.stun_attr_varsize_add(self.buf, attr_type, s, pad)
+    stunmsg_c.stun_attr_varsize_add(self._buf, attr_type, s, pad)
 
   def _get_data(self, i):
-    return stunmsg_c.data_read((self.buf, i))
+    return stunmsg_c.data_read((self._buf, i))
 
   def _append_data(self, attr_type, value):
-    self.buf[len(self.buf):] = \
+    self._buf[len(self._buf):] = \
         bytearray(stunmsg_c.stun_attr_varsize_size(len(value)))
-    stunmsg_c.stun_attr_varsize_add(self.buf, attr_type, value, 0)
+    stunmsg_c.stun_attr_varsize_add(self._buf, attr_type, value, 0)
 
   def _get_sockaddr(self, i):
-    res, addr = stunmsg_c.stun_attr_sockaddr_read((self.buf, i))
+    res, addr = stunmsg_c.stun_attr_sockaddr_read((self._buf, i))
     return addr if res == 0 else None
 
   def _append_sockaddr(self, attr_type, value):
@@ -269,12 +380,12 @@ class StunMsg(object):
       family = stunmsg_c.STUN_IPV4
     else:
       family = stunmsg_c.STUN_IPV6
-    self.buf[len(self.buf):] = \
+    self._buf[len(self._buf):] = \
         bytearray(stunmsg_c.stun_attr_sockaddr_size(family))
-    stunmsg_c.stun_attr_sockaddr_add(self.buf, attr_type, (addr, port))
+    stunmsg_c.stun_attr_sockaddr_add(self._buf, attr_type, (addr, port))
 
   def _get_xor_sockaddr(self, i):
-    res, addr = stunmsg_c.stun_attr_xor_sockaddr_read((self.buf, i), self.buf)
+    res, addr = stunmsg_c.stun_attr_xor_sockaddr_read((self._buf, i), self._buf)
     return addr if res == 0 else None
 
   def _append_xor_sockaddr(self, attr_type, value):
@@ -283,26 +394,26 @@ class StunMsg(object):
       family = stunmsg_c.STUN_IPV4
     else:
       family = stunmsg_c.STUN_IPV6
-    self.buf[len(self.buf):] = \
+    self._buf[len(self._buf):] = \
         bytearray(stunmsg_c.stun_attr_sockaddr_size(family))
-    stunmsg_c.stun_attr_xor_sockaddr_add(self.buf, attr_type, (addr, port))
+    stunmsg_c.stun_attr_xor_sockaddr_add(self._buf, attr_type, (addr, port))
 
   def _get_msgint(self, i):
     def check(password):
-      res = stunmsg_c.stun_attr_msgint_check((self.buf, i), self.buf, password)
+      res = stunmsg_c.stun_attr_msgint_check((self._buf, i), self._buf, password)
       return True if res == 1 else False
     return check
 
   def _append_msgint(self, attr_type, key):
-    self.buf[len(self.buf):] = bytearray(stunmsg_c.stun_attr_msgint_size)
-    stunmsg_c.stun_attr_msgint_add(self.buf, key)
+    self._buf[len(self._buf):] = bytearray(stunmsg_c.stun_attr_msgint_size)
+    stunmsg_c.stun_attr_msgint_add(self._buf, key)
 
   def _get_fingerprint(self, i):
-    res = stunmsg_c.stun_attr_fingerprint_check((self.buf, i), self.buf)
+    res = stunmsg_c.stun_attr_fingerprint_check((self._buf, i), self._buf)
     return True if res == 1 else False
 
   def _append_fingerprint(self, attr_type, value):
     _ = attr_type, value
-    self.buf[len(self.buf):] = bytearray(stunmsg_c.stun_attr_fingerprint_size)
-    stunmsg_c.stun_attr_fingerprint_add(self.buf)
+    self._buf[len(self._buf):] = bytearray(stunmsg_c.stun_attr_fingerprint_size)
+    stunmsg_c.stun_attr_fingerprint_add(self._buf)
 
