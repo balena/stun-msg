@@ -33,6 +33,7 @@
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 #define UNUSED(x) ((void)(x))
 
+#if !defined(__APPLE__)
 static uint64_t htonll(uint64_t value) {
   const int num = 42;
   if(*(char *)&num == 42) { /* test little endian */
@@ -46,6 +47,7 @@ static uint64_t htonll(uint64_t value) {
 static uint64_t ntohll(uint64_t value) {
   return htonll(value);
 }
+#endif
 
 static void store_padding(uint8_t *p, size_t n, uint8_t pad) {
   if ((n & 0x03) > 0) {
