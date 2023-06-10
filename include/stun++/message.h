@@ -487,102 +487,102 @@ struct fingerprint {
 #define STUNXX_ATTRIBUTE_SPECIAL(x, name) // defined below
 
 #define STUNXX_ATTRIBUTE_STRING(x, name) \
-bits::varsize<char> name(const char *data, uint8_t pad = 0) { \
+inline bits::varsize<char> name(const char *data, uint8_t pad = 0) { \
  return bits::varsize<char>(attribute::type::name, data, \
  data + strlen(data), pad); \
 } \
-bits::varsize<char> name(const std::string &s, uint8_t pad = 0) { \
+inline bits::varsize<char> name(const std::string &s, uint8_t pad = 0) { \
  return bits::varsize<char>(attribute::type::name, s.data(), \
  s.data() + s.size(), pad); \
 } \
-bits::varsize<char> name(const char *begin, const char *end, \
+inline bits::varsize<char> name(const char *begin, const char *end, \
  uint8_t pad = 0) { \
  return bits::varsize<char>(attribute::type::name, begin, end, pad); \
 }
 
 #define STUNXX_ATTRIBUTE_DATA(x, name) \
-bits::varsize<uint8_t> name(const uint8_t *data, size_t data_len, \
+inline bits::varsize<uint8_t> name(const uint8_t *data, size_t data_len, \
  uint8_t pad = 0) { \
  return bits::varsize<uint8_t>(attribute::type::name, data, \
  data + data_len, pad); \
 } \
-bits::varsize<uint8_t> name(const uint8_t *begin, const uint8_t *end, \
+inline bits::varsize<uint8_t> name(const uint8_t *begin, const uint8_t *end, \
  uint8_t pad = 0) { \
  return bits::varsize<uint8_t>(attribute::type::name, begin, end, pad); \
 }
 
 #define STUNXX_ATTRIBUTE_SOCKADDR(x, name) \
-bits::socket_address name(const sockaddr *addr) { \
+inline bits::socket_address name(const sockaddr *addr) { \
  return bits::socket_address(attribute::type::name, addr); \
 } \
-bits::socket_address name(const sockaddr &addr) { \
+inline bits::socket_address name(const sockaddr &addr) { \
  return bits::socket_address(attribute::type::name, &addr); \
 } \
-bits::socket_address name(const sockaddr_in *addr) { \
+inline bits::socket_address name(const sockaddr_in *addr) { \
  return bits::socket_address(attribute::type::name, (sockaddr*)addr); \
 } \
-bits::socket_address name(const sockaddr_in &addr) { \
+inline bits::socket_address name(const sockaddr_in &addr) { \
  return bits::socket_address(attribute::type::name, (sockaddr*)&addr); \
 } \
-bits::socket_address name(const sockaddr_in6 *addr) { \
+inline bits::socket_address name(const sockaddr_in6 *addr) { \
  return bits::socket_address(attribute::type::name, (sockaddr*)addr); \
 } \
-bits::socket_address name(const sockaddr_in6 &addr) { \
+inline bits::socket_address name(const sockaddr_in6 &addr) { \
  return bits::socket_address(attribute::type::name, (sockaddr*)&addr); \
 }
 
 #define STUNXX_ATTRIBUTE_XOR_SOCKADDR(x, name) \
-bits::xor_socket_address name(const sockaddr *addr) { \
+inline bits::xor_socket_address name(const sockaddr *addr) { \
  return bits::xor_socket_address(attribute::type::name, addr); \
 } \
-bits::xor_socket_address name(const sockaddr &addr) { \
+inline bits::xor_socket_address name(const sockaddr &addr) { \
  return bits::xor_socket_address(attribute::type::name, &addr); \
 } \
-bits::xor_socket_address name(const sockaddr_in *addr) { \
+inline bits::xor_socket_address name(const sockaddr_in *addr) { \
  return bits::xor_socket_address(attribute::type::name, (sockaddr*)addr); \
 } \
-bits::xor_socket_address name(const sockaddr_in &addr) { \
+inline bits::xor_socket_address name(const sockaddr_in &addr) { \
  return bits::xor_socket_address(attribute::type::name, (sockaddr*)&addr); \
 } \
-bits::xor_socket_address name(const sockaddr_in6 *addr) { \
+inline bits::xor_socket_address name(const sockaddr_in6 *addr) { \
  return bits::xor_socket_address(attribute::type::name, (sockaddr*)addr); \
 } \
-bits::xor_socket_address name(const sockaddr_in6 &addr) { \
+inline bits::xor_socket_address name(const sockaddr_in6 &addr) { \
  return bits::xor_socket_address(attribute::type::name, (sockaddr*)&addr); \
 }
 
 #define STUNXX_ATTRIBUTE_EMPTY(x, name) \
-bits::empty name() { \
+inline bits::empty name() { \
  return bits::empty(attribute::type::name); \
 }
 
 #define STUNXX_ATTRIBUTE_UINT8(x, name) \
-bits::u8 name(uint8_t value) { \
+inline bits::u8 name(uint8_t value) { \
  return bits::u8(attribute::type::name, value); \
 }
 
 #define STUNXX_ATTRIBUTE_UINT8_PAD(x, name) \
-bits::u8_pad name(uint8_t value, uint8_t pad = 0) { \
+inline bits::u8_pad name(uint8_t value, uint8_t pad = 0) { \
  return bits::u8_pad(attribute::type::name, value, pad); \
 }
 
 #define STUNXX_ATTRIBUTE_UINT16(x, name) \
-bits::u16 name(uint16_t value) { \
+inline bits::u16 name(uint16_t value) { \
  return bits::u16(attribute::type::name, value); \
 }
 
 #define STUNXX_ATTRIBUTE_UINT16_PAD(x, name) \
-bits::u16_pad name(uint16_t value, uint8_t pad = 0) { \
+inline bits::u16_pad name(uint16_t value, uint8_t pad = 0) { \
  return bits::u16_pad(attribute::type::name, value, pad); \
 }
 
 #define STUNXX_ATTRIBUTE_UINT32(x, name) \
-bits::u32 name(uint32_t value) { \
+inline bits::u32 name(uint32_t value) { \
  return bits::u32(attribute::type::name, value); \
 }
 
 #define STUNXX_ATTRIBUTE_UINT64(x, name) \
-bits::u64 name(uint64_t value) { \
+inline bits::u64 name(uint64_t value) { \
  return bits::u64(attribute::type::name, value); \
 }
 
@@ -603,36 +603,36 @@ bits::u64 name(uint64_t value) { \
 
 // Special attributes define below:
 
-bits::errcode error_code(int status_code, const char *reason,
+inline bits::errcode error_code(int status_code, const char *reason,
                          uint8_t pad = 0) {
   return bits::errcode(status_code, reason, pad);
 }
 
-bits::unknown unknown_attributes(const uint16_t *data, size_t count,
+inline bits::unknown unknown_attributes(const uint16_t *data, size_t count,
                                  uint8_t pad = 0) {
   return bits::unknown(data, data + count, pad);
 }
 
-bits::unknown unknown_attributes(const uint16_t *begin,
+inline bits::unknown unknown_attributes(const uint16_t *begin,
                                  const uint16_t *end,
                                  uint8_t pad = 0) {
   return bits::unknown(begin, end, pad);
 }
 
-bits::msgint message_integrity(const char *key) {
+inline bits::msgint message_integrity(const char *key) {
   return bits::msgint(reinterpret_cast<const uint8_t*>(key), strlen(key));
 }
 
-bits::msgint message_integrity(const std::string &key) {
+inline bits::msgint message_integrity(const std::string &key) {
   return bits::msgint(reinterpret_cast<const uint8_t*>(key.c_str()),
       key.size());
 }
 
-bits::msgint message_integrity(const uint8_t *key, size_t key_len) {
+inline bits::msgint message_integrity(const uint8_t *key, size_t key_len) {
   return bits::msgint(key, key_len);
 }
 
-bits::fingerprint fingerprint() {
+inline bits::fingerprint fingerprint() {
   return bits::fingerprint();
 }
 
